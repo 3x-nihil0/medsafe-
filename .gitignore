@@ -1,0 +1,24 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Native build artefacts (regenerate with `npm run android:sync` / `npx cap sync`)
+android/.gradle/
+android/app/build/
+ios/App/Pods/
+ios/App/build/
+local.properties
+
+# Never commit signing keys — losing them (or leaking them) breaks updates
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+
+# Freebuff workspace metadata
+.freebuff/

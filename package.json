@@ -1,0 +1,38 @@
+{
+  "name": "medsafe",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run lint && npm test && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "test": "tsx scripts/runFormalTests.ts",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android",
+    "icons": "node scripts/generateIcons.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.2",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.21.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  }
+}
