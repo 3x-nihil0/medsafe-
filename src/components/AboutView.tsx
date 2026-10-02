@@ -9,6 +9,7 @@ import {
   Database,
   Bell,
   BookOpen,
+  FileText,
   GraduationCap,
   CheckCircle2
 } from 'lucide-react';
@@ -21,9 +22,10 @@ import {
 interface AboutViewProps {
   onOpenBackup: () => void;
   onLoadSampleData: () => void;
+  onOpenSummary: () => void;
 }
 
-export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSampleData }) => {
+export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSampleData, onOpenSummary }) => {
   const [permission, setPermission] = useState<string>('default');
 
   useEffect(() => {
@@ -172,6 +174,14 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
         >
           <Download className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
           <span>Back up / restore (JSON file)</span>
+        </button>
+
+        <button
+          onClick={onOpenSummary}
+          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded border border-teal-300 dark:border-teal-900/60 bg-teal-50 dark:bg-teal-950/30 hover:bg-teal-100 dark:hover:bg-teal-950/50 text-teal-800 dark:text-teal-300 text-xs font-semibold transition"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Print / share medication list (for your doctor)</span>
         </button>
 
         <button

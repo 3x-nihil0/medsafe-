@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Moon, Sun } from 'lucide-react';
+import { Bell, Moon, Sun, FileText } from 'lucide-react';
 import { Patient, AppTheme } from '../types';
 
 interface MobileHeaderProps {
@@ -10,6 +10,7 @@ interface MobileHeaderProps {
   theme: AppTheme;
   onToggleTheme: (newTheme: AppTheme) => void;
   onOpenProfile: () => void;
+  onOpenSummary: () => void;
 }
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
@@ -19,7 +20,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onOpenAlerts,
   theme,
   onToggleTheme,
-  onOpenProfile
+  onOpenProfile,
+  onOpenSummary
 }) => {
   const formattedTime = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -62,6 +64,15 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
         {/* Right: alerts, clock, theme */}
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onOpenSummary}
+            className="p-1.5 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition active:scale-95"
+            title="Print / share medication list"
+            aria-label="Print or share medication list"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+
           <button
             onClick={onOpenAlerts}
             className="relative p-1.5 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition active:scale-95"

@@ -22,6 +22,7 @@ const BackupExportModal = lazy(() => import('./components/BackupExportModal').th
 const AlertsDrawer = lazy(() => import('./components/AlertsDrawer').then(m => ({ default: m.AlertsDrawer })));
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const UserProfileDrawer = lazy(() => import('./components/UserProfileDrawer').then(m => ({ default: m.UserProfileDrawer })));
+const MedicationSummary = lazy(() => import('./components/MedicationSummary').then(m => ({ default: m.MedicationSummary })));
 
 const ViewFallback: React.FC = () => (
   <div className="flex items-center justify-center p-8 text-slate-400 dark:text-zinc-500 text-xs">
@@ -118,6 +119,7 @@ export default function App() {
   const [isAlertsDrawerOpen, setIsAlertsDrawerOpen] = useState(false);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   // --------------------------------------------------------- sound & clock
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => isAudioAlertEnabled());
@@ -574,6 +576,7 @@ export default function App() {
                 theme={theme}
                 onToggleTheme={handleToggleTheme}
                 onOpenProfile={() => setIsProfileDrawerOpen(true)}
+                onOpenSummary={() => setIsSummaryOpen(true)}
               />
 
               <main className="flex-1 overflow-y-auto p-4 pb-28 space-y-4 bg-slate-50 dark:bg-zinc-950 transition-colors">
@@ -624,7 +627,11 @@ export default function App() {
                   )}
 
                   {mobileTab === 'about' && (
-                    <AboutView onOpenBackup={() => setIsBackupModalOpen(true)} onLoadSampleData={handleLoadSampleData} />
+                    <AboutView
+                      onOpenBackup={() => setIsBackupModalOpen(true)}
+                      onLoadSampleData={handleLoadSampleData}
+                      onOpenSummary={() => setIsSummaryOpen(true)}
+                    />
                   )}
                 </Suspense>
               </main>
@@ -691,6 +698,16 @@ export default function App() {
           onCreateProfile={handleCreateProfile}
           onLoadSampleData={handleLoadSampleData}
         />
+
+        {isSummaryOpen && activePatient && (
+          <MedicationSummary
+            isOpen={isSummaryOpen}
+            onClose={() => setIsSummaryOpen(false)}
+            patient={activePatient}
+            medications={medications}
+            allergies={allergies}
+          />
+        )}
 
         {isProfileDrawerOpen && activePatient && (
           <UserProfileDrawer
