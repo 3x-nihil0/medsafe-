@@ -17,7 +17,9 @@ createRoot(document.getElementById('root')!).render(
 // cached by a service worker (a stale cache would survive app updates).
 if ('serviceWorker' in navigator && typeof window !== 'undefined' && !isNativeApp()) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
+    // BASE_URL keeps this correct at a domain root (Netlify) and under a
+    // sub-path (GitHub Pages project sites).
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(err => {
       console.warn('Service worker registration note:', err);
     });
   });

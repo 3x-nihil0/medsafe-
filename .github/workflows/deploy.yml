@@ -33,8 +33,15 @@ jobs:
         run: npm ci
 
       # typecheck + rule-engine tests + production bundle
+      # VITE_* values are baked into the bundle at build time, so the care-team
+      # layer only works on the live site if these repository secrets are set
+      # (Settings -> Secrets and variables -> Actions). Missing secrets fall
+      # back to single-device mode instead of failing the build.
       - name: Build
         run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

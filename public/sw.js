@@ -3,7 +3,10 @@ const VERSION = 'medsafe-v2.1';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/pwa-192x192.png', '/pwa-512x512.png'];
+// Relative URLs resolve against the service worker's own location, so the
+// precache works both at a domain root (Netlify) and under a sub-path
+// (GitHub Pages project sites).
+const PRECACHE_URLS = ['./', './index.html', './manifest.json', './pwa-192x192.png', './pwa-512x512.png'];
 
 // The only cross-origin hosts we may cache. Everything else (Supabase auth
 // and REST above all) is passed straight through to the network: caching an
@@ -45,15 +48,19 @@ self.addEventListener('fetch', event => {
           caches.open(RUNTIME_CACHE).then(cache => cache.put('/index.html', copy));
           return response;
         })
-        .catch(() => caches.match('/index.html').then(cached => cached || caches.match('/')))
+        .catch(() => caches.match('./index.html').then(cached => cached || caches.match('./')))
     );
     return;
   }
 
   // Hashed build assets and icons: cache first (immutable filenames).
+  // The path may sit under a sub-path prefix, so match on the segment rather
+  // than an absolute prefix, and never cache the worker itself - a stale
+  // /sw.js would stop updates from reaching an installed app.
   const isCacheableAsset =
     url.origin === self.location.origin &&
-    (url.pathname.startsWith('/assets/') ||
+    !url.pathname.endsWith('/sw.js') &&
+    (/(^|\/)assets\//.test(url.pathname) ||
       /\.(png|svg|jpg|jpeg|webp|ico|woff2?|css|js)$/.test(url.pathname));
 
   if (isCacheableAsset) {

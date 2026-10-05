@@ -5,6 +5,10 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Relative base so the built PWA works from any path, not just a domain
+    // root - GitHub Pages serves project sites under /<repo-name>/, where
+    // root-absolute /assets/... URLs would render a blank screen.
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
