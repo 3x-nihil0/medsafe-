@@ -19,6 +19,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Attach the build to the github-pages environment so secrets stored
+    # either at repository level or on that environment are both visible.
+    environment: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
