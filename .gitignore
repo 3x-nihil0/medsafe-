@@ -6,6 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+# .env.production carries only the publishable client keys (public by design)
+# so the hosted PWA can build without repository secrets. See the file header.
+!.env.production
 
 # Native build artefacts (regenerate with `npm run android:sync` / `npx cap sync`)
 android/.gradle/
