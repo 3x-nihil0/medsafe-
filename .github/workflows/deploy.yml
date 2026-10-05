@@ -41,7 +41,15 @@ jobs:
       # (Settings -> Secrets and variables -> Actions). Missing secrets fall
       # back to single-device mode instead of failing the build.
       - name: Build
-        run: npm run build
+        run: |
+          # GitHub expands a missing secret to an empty string, and Vite lets
+          # an empty-but-defined variable beat .env.production. Unset the
+          # empties so the committed publishable keys act as the fallback;
+          # real repository/environment secrets stay exported and win.
+          [ -z "$VITE_SUPABASE_URL" ] && unset VITE_SUPABASE_URL || true
+          [ -z "$VITE_SUPABASE_ANON_KEY" ] && unset VITE_SUPABASE_ANON_KEY || true
+          echo "care-team env: $([ -n "$VITE_SUPABASE_URL" ] && echo 'from secrets' || echo 'from .env.production')"
+          npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
