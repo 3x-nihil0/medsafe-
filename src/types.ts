@@ -217,6 +217,84 @@ export interface TestCaseResult extends TestCase {
   logs: string[];
 }
 
+// ============================================================
+// Cloud care-team types (Supabase). The app works fully offline
+// without these; they only come into play when cloud keys exist.
+// ============================================================
+
+export type CloudRole = 'patient' | 'doctor';
+
+/** A signed-up user in the cloud (doctor directory / care links). */
+export interface CloudProfile {
+  id: string;
+  role: CloudRole;
+  fullName: string;
+  specialty?: string;
+  licenseNo?: string;
+  createdAt?: string;
+}
+
+export type CareLinkStatus = 'pending' | 'active' | 'declined' | 'ended';
+
+/** Patient ↔ doctor relationship. */
+export interface CareLink {
+  id: string;
+  patientId: string;
+  doctorId: string;
+  status: CareLinkStatus;
+  createdAt: string;
+  /** Denormalised for list rendering (set by the query layer). */
+  patientName?: string;
+  doctorName?: string;
+  doctorSpecialty?: string;
+}
+
+export interface CloudMessage {
+  id: string;
+  linkId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ClinicalNote {
+  id: string;
+  linkId: string;
+  doctorId: string;
+  patientId: string;
+  note: string;
+  createdAt: string;
+  doctorName?: string;
+}
+
+/** One row of the shared medication list. */
+export interface SharedMedItem {
+  drugName: string;
+  dosage: string;
+  schedule: string;
+  quantityPerDose: number;
+  dosesPerDay: number;
+  quantityRemaining: number;
+  instructions?: string;
+  conditionCategory?: string;
+}
+
+export interface SharedAllergyItem {
+  allergenName: string;
+  reactionSeverity: string;
+  symptoms?: string;
+}
+
+/** What a linked doctor can read — built on the patient's device. */
+export interface MedSnapshot {
+  patientName: string;
+  conditions: string[];
+  allergies: SharedAllergyItem[];
+  medications: SharedMedItem[];
+  generatedOn: string;
+  updatedAt?: string;
+}
+
 /** Technology Acceptance Model (TAM - Davis 1989) Survey Response */
 export interface TAMSurveyResponse {
   responseID: string;

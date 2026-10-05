@@ -11,6 +11,7 @@ import { sendDesktopNotification } from './lib/notificationService';
 import { readCollection, writeCollection, readSetting, writeSetting, eraseAllData } from './services/store';
 import { isPinSet, setPin, clearPin } from './lib/appLock';
 import { AppLockScreen } from './components/AppLockScreen';
+import { isCloudEnabled, subscribeAuth, currentSession, fetchProfile, signOut as cloudSignOut } from './lib/cloud';
 
 // Code-split views keep the initial install download small
 const MedicationCabinetView = lazy(() => import('./components/MedicationCabinetView').then(m => ({ default: m.MedicationCabinetView })));
@@ -23,6 +24,9 @@ const AlertsDrawer = lazy(() => import('./components/AlertsDrawer').then(m => ({
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const UserProfileDrawer = lazy(() => import('./components/UserProfileDrawer').then(m => ({ default: m.UserProfileDrawer })));
 const MedicationSummary = lazy(() => import('./components/MedicationSummary').then(m => ({ default: m.MedicationSummary })));
+const CloudAuthModal = lazy(() => import('./components/CloudAuthModal').then(m => ({ default: m.CloudAuthModal })));
+const DoctorDashboard = lazy(() => import('./components/DoctorDashboard').then(m => ({ default: m.DoctorDashboard })));
+const CareTeamView = lazy(() => import('./components/CareTeamView').then(m => ({ default: m.CareTeamView })));
 
 const ViewFallback: React.FC = () => (
   <div className="flex items-center justify-center p-8 text-slate-400 dark:text-zinc-500 text-xs">
@@ -40,7 +44,9 @@ import {
   Reminder,
   RefillNotification,
   AlertLog,
-  AppTheme
+  AppTheme,
+  CloudProfile,
+  ClinicalNote
 } from './types';
 
 import {
@@ -120,6 +126,72 @@ export default function App() {
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [isCloudAuthOpen, setIsCloudAuthOpen] = useState(false);
+
+  // ------------------------------------------- cloud care team (Supabase)
+  // Optional layer: without env keys nothing here runs and the app stays
+  // a single-device local-first tool, exactly as before.
+  const [cloudProfile, setCloudProfile] = useState<CloudProfile | null>(null);
+  const [doctorNotes, setDoctorNotes] = useState<ClinicalNote[]>([]);
+
+  useEffect(() => {
+    if (!isCloudEnabled()) return;
+    let cancelled = false;
+    const loadProfile = async (userId: string | null) => {
+      if (!userId) {
+        if (!cancelled) {
+          setCloudProfile(null);
+          setDoctorNotes([]);
+        }
+        return;
+      }
+      try {
+        const profile = await fetchProfile(userId);
+        if (!cancelled) setCloudProfile(profile);
+      } catch (err) {
+        console.error('MedSafe: could not load cloud profile.', err);
+      }
+    };
+    let unsub: (() => void) | undefined;
+    subscribeAuth(session => loadProfile(session?.user.id ?? null))
+      .then(u => {
+        if (cancelled) u();
+        else unsub = u;
+      })
+      .catch(err => console.error('MedSafe: auth subscription failed.', err));
+    currentSession().then(s => loadProfile(s?.user.id ?? null)).catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
+  }, []);
+
+  // A successful sign-in closes the auth sheet no matter which path set it
+  // (explicit callback or the auth-state subscription).
+  useEffect(() => {
+    if (cloudProfile) setIsCloudAuthOpen(false);
+  }, [cloudProfile]);
+
+  const handleCloudSignedIn = async (userId: string) => {
+    try {
+      const profile = await fetchProfile(userId);
+      if (profile) setCloudProfile(profile);
+      else await cloudSignOut();
+    } catch (err) {
+      console.error('MedSafe: profile lookup failed.', err);
+    }
+    setIsCloudAuthOpen(false);
+  };
+
+  const handleCloudSignOut = async () => {
+    try {
+      await cloudSignOut();
+    } catch (err) {
+      console.error('MedSafe: sign-out failed.', err);
+    }
+    setCloudProfile(null);
+    setDoctorNotes([]);
+  };
 
   // --------------------------------------------------------- sound & clock
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => isAudioAlertEnabled());
@@ -546,6 +618,7 @@ export default function App() {
   };
 
   const hasProfiles = patients.length > 0;
+  const isDoctorMode = cloudProfile?.role === 'doctor';
   const nowString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -566,7 +639,11 @@ export default function App() {
       {/* Main phone-width container */}
       <div className="flex-1 flex items-start justify-center p-0 sm:py-6 overflow-x-hidden">
         <div className="w-full max-w-md min-h-screen sm:min-h-[820px] bg-white dark:bg-zinc-900 sm:rounded-2xl sm:border sm:border-slate-200 dark:sm:border-zinc-800 sm:shadow-sm flex flex-col overflow-hidden transition-all duration-200">
-          {hasProfiles && activePatient && (
+          {isDoctorMode && cloudProfile ? (
+            <Suspense fallback={<ViewFallback />}>
+              <DoctorDashboard profile={cloudProfile} onSignOut={handleCloudSignOut} />
+            </Suspense>
+          ) : hasProfiles && activePatient ? (
             <>
               <MobileHeader
                 activePatient={activePatient}
@@ -623,6 +700,17 @@ export default function App() {
                       drugRegistry={drugRegistry}
                       onAddAllergy={handleAddAllergy}
                       onRemoveAllergy={handleRemoveAllergy}
+                      careTeam={
+                        <CareTeamView
+                          patient={activePatient}
+                          medications={medications}
+                          allergies={allergies}
+                          cloudProfile={cloudProfile}
+                          onOpenAuth={() => setIsCloudAuthOpen(true)}
+                          onSignOut={handleCloudSignOut}
+                          onNotesChanged={setDoctorNotes}
+                        />
+                      }
                     />
                   )}
 
@@ -651,7 +739,7 @@ export default function App() {
                 <div className="w-28 h-1 bg-slate-300 dark:bg-zinc-700 rounded-full" />
               </div>
             </>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -689,7 +777,7 @@ export default function App() {
         )}
 
         <AuthModal
-          isOpen={!hasProfiles || isProfileModalOpen}
+          isOpen={(!hasProfiles && !isDoctorMode) || isProfileModalOpen}
           canClose={hasProfiles}
           onClose={() => setIsProfileModalOpen(false)}
           patients={patients}
@@ -706,6 +794,15 @@ export default function App() {
             patient={activePatient}
             medications={medications}
             allergies={allergies}
+            doctorNotes={doctorNotes}
+          />
+        )}
+
+        {isCloudAuthOpen && (
+          <CloudAuthModal
+            isOpen={isCloudAuthOpen}
+            onClose={() => setIsCloudAuthOpen(false)}
+            onSignedIn={handleCloudSignedIn}
           />
         )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldAlert, Bell, BookOpen } from 'lucide-react';
+import { ShieldAlert, Bell, BookOpen, Users } from 'lucide-react';
 import { Patient, Allergy, AlertLog, DrugRegistryItem } from '../types';
 import { PatientAllergiesView } from './PatientAllergiesView';
 import { PatientAlertHistoryView } from './PatientAlertHistoryView';
@@ -12,6 +12,8 @@ interface SafetyViewProps {
   drugRegistry: DrugRegistryItem[];
   onAddAllergy: (newAllergy: Omit<Allergy, 'allergyID'>) => void;
   onRemoveAllergy: (allergyID: number) => void;
+  /** Care-team tab content (doctor directory, chat, notes) — rendered lazily by the parent. */
+  careTeam?: React.ReactNode;
 }
 
 export const SafetyView: React.FC<SafetyViewProps> = ({
@@ -20,9 +22,10 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
   alertLogs,
   drugRegistry,
   onAddAllergy,
-  onRemoveAllergy
+  onRemoveAllergy,
+  careTeam
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'allergies' | 'history' | 'drugs'>('allergies');
+  const [activeSubTab, setActiveSubTab] = useState<'allergies' | 'history' | 'drugs' | 'care'>('allergies');
 
   const patientAllergyCount = allergies.filter(a => a.patientID === patient.patientID).length;
   const patientAlertCount = alertLogs.filter(a => a.patientID === patient.patientID && !a.read).length;
@@ -76,6 +79,18 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
           <BookOpen className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           <span>Drug guide</span>
         </button>
+
+        <button
+          onClick={() => setActiveSubTab('care')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded text-xs font-semibold transition ${
+            activeSubTab === 'care'
+              ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-2xs border border-slate-200/60 dark:border-zinc-700/50'
+              : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+          <span>Care</span>
+        </button>
       </div>
 
       {/* Subtab content */}
@@ -91,6 +106,8 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
           patient={patient}
           alertLogs={alertLogs}
         />
+      ) : activeSubTab === 'care' ? (
+        careTeam
       ) : (
         <DrugRegistryView drugRegistry={drugRegistry} />
       )}

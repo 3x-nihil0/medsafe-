@@ -113,6 +113,41 @@ been run** — the [`ios/`](ios/) project and all icon/splash assets exist — s
 `npx cap open ios` + Xcode. That path needs Apple's Developer Program at **$99/year**; the PWA
 needs nothing.
 
+### Doctor & patient accounts (optional, free)
+
+MedSafe works fully offline as a single-device app with no setup. To add the **care-team
+layer** — doctor directory, connection requests, messaging, doctor's notes and a shared
+medication list — connect a free [Supabase](https://supabase.com) project (50k monthly users
+on the free tier, no credit card):
+
+1. Create a Supabase project (any name, any region).
+2. Open **SQL Editor → New query**, paste the whole of
+   [`supabase/schema.sql`](supabase/schema.sql) and press **Run**. This creates five tables
+   with row-level security — the database itself refuses any read a user isn't part of,
+   which is what fixes the original system's auth-bypass holes.
+3. In **Authentication → Providers → Email**, turn **off** “Confirm email” (patients and
+   doctors sign in immediately, no inbox step).
+4. Copy **Project URL** and **anon public key** from *Project Settings → API* into a local
+   `.env` file (see [`.env.example`](.env.example)):
+
+   ```bash
+   VITE_SUPABASE_URL=https://xxxx.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJ…
+   ```
+
+5. Rebuild (`npm run build`) and redeploy — when deploying, add the same two variables in
+   your host's environment settings (Netlify: *Site settings → Environment variables*).
+
+Without these keys the app silently falls back to single-device mode and the **Care** tab
+displays setup instructions instead of the directory.
+
+**How the roles work:** patients sign in from *Safety → Care* and request a doctor from the
+directory; the doctor approves requests from their own dashboard, then sees the patient's
+shared medication list, can write notes (which appear in the patient's app *and* on the
+printable medication sheet) and chat with them. Doctors get a separate dashboard instead of
+the patient tabs when they sign in. The local PIN lock and local-only storage story are
+unchanged — only what the patient explicitly shares leaves the device.
+
 ---
 
 ## Build a real Android APK (optional, free)
@@ -179,6 +214,7 @@ scripts/runFormalTests.ts regression suite (TC1–TC8)
 scripts/generateIcons.mjs all icons and splash screens, generated from one SVG
 public/sw.js              offline service worker (browser/PWA only)
 capacitor.config.ts       native shell config (appId: com.gloryephraim.medsafe)
+supabase/schema.sql       care-team tables + row-level security policies (doctor/patient layer)
 android/ + ios/           generated Capacitor projects with icon sets — commit these
 .github/workflows/        ci.yml (tests) + deploy.yml (GitHub Pages publish)
 ```

@@ -1,9 +1,15 @@
 // MedSafe service worker — offline app shell + installable PWA
-const VERSION = 'medsafe-v2';
+const VERSION = 'medsafe-v2.1';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
 const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/pwa-192x192.png', '/pwa-512x512.png'];
+
+// The only cross-origin hosts we may cache. Everything else (Supabase auth
+// and REST above all) is passed straight through to the network: caching an
+// authenticated response would replay stale data to a signed-in user and
+// write health information into Cache Storage on a shared device.
+const CACHEABLE_CROSS_ORIGIN = new Set(['fonts.gstatic.com', 'fonts.googleapis.com']);
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -67,8 +73,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Remote fonts: cache first, fall back to network.
+  // Anything else cross-origin: never cached, straight to the network.
   if (url.origin !== self.location.origin) {
+    if (!CACHEABLE_CROSS_ORIGIN.has(url.hostname)) return;
+
+    // Allow-listed hosts (remote fonts): cache first, fall back to network.
     event.respondWith(
       caches.match(request).then(
         cached =>
