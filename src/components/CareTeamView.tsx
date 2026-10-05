@@ -134,7 +134,7 @@ export const CareTeamView: React.FC<CareTeamViewProps> = ({
         const ms = await fetchMessages(threadLink.id);
         if (alive) setMessages(ms);
       } catch {
-        /* transient — retried on next poll */
+        /* transient - retried on next poll */
       }
     };
     load();
@@ -201,7 +201,7 @@ export const CareTeamView: React.FC<CareTeamViewProps> = ({
           <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">Your care team</h3>
           <p className="text-[11px] text-slate-600 dark:text-zinc-400 leading-relaxed mt-1">
             Connect to pick your doctor from the register, message them, receive their notes and share your medication
-            list — from any device. Your local data stays on this phone; only the list you share is sent.
+            list - from any device. Your local data stays on this phone; only the list you share is sent.
           </p>
         </div>
         <button
@@ -386,7 +386,7 @@ export const CareTeamView: React.FC<CareTeamViewProps> = ({
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold truncate">{l.doctorName}</div>
               <div className="text-[10px] text-slate-500 dark:text-zinc-400 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Request sent — awaiting approval
+                <Clock className="w-3 h-3" /> Request sent - awaiting approval
               </div>
             </div>
             <button

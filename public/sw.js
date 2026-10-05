@@ -1,4 +1,4 @@
-// MedSafe service worker — offline app shell + installable PWA
+// MedSafe service worker - offline app shell + installable PWA
 const VERSION = 'medsafe-v2.1';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;

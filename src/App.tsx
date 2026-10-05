@@ -108,7 +108,7 @@ export default function App() {
   const [drugRegistry] = useState<DrugRegistryItem[]>(INITIAL_DRUG_REGISTRY);
 
   // Persist every collection the moment it changes (this is the whole
-  // persistence layer — no server round trip, works fully offline).
+  // persistence layer - no server round trip, works fully offline).
   useEffect(() => writeCollection('patients', patients), [patients]);
   useEffect(() => writeCollection('medications', medications), [medications]);
   useEffect(() => writeCollection('allergies', allergies), [allergies]);
@@ -249,7 +249,7 @@ export default function App() {
           patientID: rem.patientID,
           alertType: 'Reminder',
           severity: 'moderate',
-          message: `Time for your scheduled dose: ${rem.drugName} (${rem.dosage}) — ${rem.scheduledTime}`,
+          message: `Time for your scheduled dose: ${rem.drugName} (${rem.dosage}) - ${rem.scheduledTime}`,
           timestamp: new Date().toISOString(),
           read: false
         },
@@ -395,7 +395,7 @@ export default function App() {
     );
     setReminders(prev => [...prev, ...newReminders]);
 
-    // Persist the full screening result — every alert the engine produced
+    // Persist the full screening result - every alert the engine produced
     // (allergy, interaction, duplicate, contraindication, fail-safe) is kept.
     const stamp = Date.now();
     const persistedAlerts: AlertLog[] = evaluation.alertsToLog.map((a, i) => ({
@@ -432,7 +432,7 @@ export default function App() {
         patientID: newAllergy.patientID,
         alertType: 'Allergy',
         severity: newAllergy.reactionSeverity,
-        message: `${newAllergy.allergenName} recorded — every new medication is now screened against this allergy.`,
+        message: `${newAllergy.allergenName} recorded - every new medication is now screened against this allergy.`,
         timestamp: new Date().toISOString(),
         read: false
       },
@@ -734,7 +734,7 @@ export default function App() {
                 />
               </div>
 
-          {/* Bottom home indicator — sits above the iOS home bar / Android gesture bar */}
+          {/* Bottom home indicator - sits above the iOS home bar / Android gesture bar */}
           <div className="safe-bottom bg-white/95 dark:bg-zinc-900 pb-1.5 pt-0.5 flex justify-center shrink-0 border-t border-slate-100 dark:border-zinc-800">
                 <div className="w-28 h-1 bg-slate-300 dark:bg-zinc-700 rounded-full" />
               </div>
@@ -835,7 +835,7 @@ export default function App() {
         )}
       </Suspense>
 
-      {/* PIN lock — covers everything until verified */}
+      {/* PIN lock - covers everything until verified */}
       {lockMode && (
         <AppLockScreen
           mode={lockMode}

@@ -35,7 +35,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-zinc-800 px-3.5 py-2 transition-colors duration-200">
       <div className="flex items-center justify-between gap-2 min-w-0">
-        {/* Left: profile avatar & identity — opens the profile drawer */}
+        {/* Left: profile avatar & identity - opens the profile drawer */}
         <button
           onClick={onOpenProfile}
           className="flex items-center gap-2 hover:opacity-90 active:scale-98 transition text-left group min-w-0 flex-1"

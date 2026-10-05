@@ -1,6 +1,6 @@
 {
   "id": "/",
-  "name": "MedSafe — Medication Safety Companion",
+  "name": "MedSafe - Medication Safety Companion",
   "short_name": "MedSafe",
   "description": "Offline allergy and drug-interaction screening, dose reminders and refill forecasting.",
   "start_url": "/",

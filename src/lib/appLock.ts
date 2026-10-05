@@ -2,7 +2,7 @@
  * Optional PIN app lock.
  *
  * The PIN guards the app when it is opened or brought back to the
- * foreground — it is a screen lock, not encryption: the health data itself
+ * foreground - it is a screen lock, not encryption: the health data itself
  * stays in plain browser storage on the device (see PRIVACY_POLICY.md).
  *
  * The PIN is never stored. A random salt plus a PBKDF2-SHA256 hash is saved,

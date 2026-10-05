@@ -133,7 +133,7 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
         <div className="mt-6 w-full max-w-xs space-y-2">
           <div className="p-3 rounded-xl bg-white/10 border border-white/15 text-xs text-teal-50 leading-relaxed">
             Forgotten your PIN? Your data is stored unencrypted on this device, so it can be
-            unlocked — or erased — from here.
+            unlocked - or erased - from here.
           </div>
           <button
             onClick={removeLock}

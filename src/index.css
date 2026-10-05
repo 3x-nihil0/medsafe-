@@ -123,7 +123,7 @@
 }
 
 /* =============================================================
-   PRINT — the medication summary sheet is the only thing printed.
+   PRINT - the medication summary sheet is the only thing printed.
    The modal portals into <body>, so everything else in the body
    (the app shell, nav, toolbars) is hidden for the print job.
    ============================================================= */
@@ -169,7 +169,7 @@
     overflow: visible !important;
   }
 
-  /* Dark mode would print light text on white paper — restore ink colors */
+  /* Dark mode would print light text on white paper - restore ink colors */
   html.dark .print-sheet .dark\:text-zinc-100,
   html.dark .print-sheet .dark\:text-zinc-200,
   html.dark .print-sheet .dark\:text-zinc-300 {

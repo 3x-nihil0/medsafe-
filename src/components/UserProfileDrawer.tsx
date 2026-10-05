@@ -143,7 +143,7 @@ export const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({
               <div>
                 <span className="text-slate-400 dark:text-zinc-500 text-[11px] block">Contact</span>
                 <span className="font-medium text-slate-800 dark:text-zinc-200 truncate block">
-                  {patient.contactNumber || '—'}
+                  {patient.contactNumber || '-'}
                 </span>
               </div>
             </div>

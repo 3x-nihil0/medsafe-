@@ -3,12 +3,12 @@
  *
  * MedSafe stays local-first: nothing in the core app requires this module.
  * When VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are present it adds the
- * doctor/patient layer — accounts, doctor directory, care links, messaging,
+ * doctor/patient layer - accounts, doctor directory, care links, messaging,
  * clinical notes and shared medication snapshots.
  *
  * Security: permissions live in the database (row-level security in
  * supabase/schema.sql), never in this file. The client only ever asks for
- * what the signed-in user is allowed to see — the database refuses the rest.
+ * what the signed-in user is allowed to see - the database refuses the rest.
  */
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import type { CloudProfile, CareLink, CloudMessage, ClinicalNote, MedSnapshot } from '../types';
@@ -21,7 +21,7 @@ export const isCloudEnabled = (): boolean => Boolean(SUPABASE_URL && SUPABASE_AN
 let clientPromise: Promise<SupabaseClient> | null = null;
 
 /**
- * Lazily load the Supabase client — the library only ships to devices that
+ * Lazily load the Supabase client - the library only ships to devices that
  * actually call a cloud function, keeping the offline bundle small.
  */
 function db(): Promise<SupabaseClient> {
@@ -49,7 +49,7 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, fal
 export function friendlyError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err || '');
   if (/failed to fetch|networkerror|load resource/i.test(msg)) {
-    return 'Could not reach the care-team service — check your internet connection, and that the Supabase keys in .env are correct.';
+    return 'Could not reach the care-team service - check your internet connection, and that the Supabase keys in .env are correct.';
   }
   return msg || 'Something went wrong. Please try again.';
 }
@@ -64,7 +64,7 @@ export async function signUpWithEmail(
   const { data, error } = await (await db()).auth.signUp({ email, password });
   if (error) {
     const friendly = /already (registered|exists)/i.test(error.message)
-      ? 'An account with this email already exists — switch to “Sign in”.'
+      ? 'An account with this email already exists - switch to “Sign in”.'
       : error.message;
     throw new Error(friendly);
   }

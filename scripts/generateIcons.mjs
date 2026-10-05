@@ -1,6 +1,6 @@
 /**
  * Generates every icon and splash asset from the single source of truth,
- * public/icon.svg — so the app icon can never drift from the brand colour.
+ * public/icon.svg - so the app icon can never drift from the brand colour.
  *
  *   npm run icons
  *

@@ -58,7 +58,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
 
         <p className="text-xs text-slate-300 leading-relaxed">
           MedSafe screens every medication you add against your documented allergies, your current prescriptions and your
-          health conditions — then reminds you when doses are due and when supplies are running low.
+          health conditions - then reminds you when doses are due and when supplies are running low.
         </p>
 
         <div className="flex flex-wrap gap-1.5 pt-0.5">
@@ -84,7 +84,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
         {permission === 'granted' ? (
           <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Notifications are enabled — MedSafe will chime and alert you while it is open.</span>
+            <span>Notifications are enabled - MedSafe will chime and alert you while it is open.</span>
           </div>
         ) : (
           <div className="space-y-2">
@@ -124,8 +124,8 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
               </span>
             </div>
             <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed">
-              Flags drug–drug interactions, allergies and cross-reactivity, duplicate therapy and condition-based
-              contraindications. Unknown drugs are never assumed safe — they return “unverified, pharmacist review
+              Flags drug-drug interactions, allergies and cross-reactivity, duplicate therapy and condition-based
+              contraindications. Unknown drugs are never assumed safe - they return “unverified, pharmacist review
               required”.
             </p>
           </div>
@@ -164,7 +164,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
         </div>
 
         <p className="text-[11px] text-slate-600 dark:text-zinc-300 leading-relaxed">
-          Everything is stored in this browser on this device only. Back up regularly if you do not want to lose it —
+          Everything is stored in this browser on this device only. Back up regularly if you do not want to lose it -
           clearing browser data or uninstalling the app deletes it.
         </p>
 

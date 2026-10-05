@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.gloryephraim.medsafe',
   appName: 'MedSafe',
-  // Vite's output folder — this gets copied into the Android app.
+  // Vite's output folder - this gets copied into the Android app.
   webDir: 'dist',
   server: {
     androidScheme: 'https'

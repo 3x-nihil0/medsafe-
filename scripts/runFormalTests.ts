@@ -7,8 +7,8 @@ import { executeFormalTestSuite } from '../src/services/ruleEngine.ts';
 import { FORMAL_TEST_CASES, INITIAL_DRUG_REGISTRY, INITIAL_INTERACTION_RULES } from '../src/data/initialData.ts';
 
 console.log('================================================================');
-console.log(' MEDSAFE — RULE ENGINE REGRESSION SUITE');
-console.log(' Safety test cases TC1 – TC8 (allergy, interaction, fail-safe,');
+console.log(' MEDSAFE - RULE ENGINE REGRESSION SUITE');
+console.log(' Safety test cases TC1 - TC8 (allergy, interaction, fail-safe,');
 console.log(' refill forecasting, reminders, access control, input validation)');
 console.log('================================================================\n');
 

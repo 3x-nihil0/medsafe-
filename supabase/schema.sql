@@ -6,7 +6,7 @@
 --
 -- Security model: every table has Row Level Security enabled, so
 -- the database itself refuses any read/write a user is not part
--- of — roles are never trusted from the app. This is the fix for
+-- of - roles are never trusted from the app. This is the fix for
 -- the original product's auth-bypass vulnerabilities.
 -- ============================================================
 

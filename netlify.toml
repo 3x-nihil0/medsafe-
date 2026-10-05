@@ -1,4 +1,4 @@
-# Netlify build settings — works with `npx netlify deploy --prod`
+# Netlify build settings - works with `npx netlify deploy --prod`
 # or by dragging the repo (or just the dist folder) onto https://app.netlify.com/drop
 [build]
   command = "npm run build"

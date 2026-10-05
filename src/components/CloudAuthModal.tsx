@@ -93,7 +93,7 @@ export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({ isOpen, onClose,
                 {mode === 'signin' ? 'Sign in to care team' : 'Create your account'}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-snug mt-0.5">
-                Connect with your doctor — messaging, notes and your shared medication list.
+                Connect with your doctor - messaging, notes and your shared medication list.
               </p>
             </div>
           </div>
@@ -268,8 +268,8 @@ VITE_SUPABASE_ANON_KEY=…`}
               </button>
 
               <p className="text-[10px] text-slate-400 dark:text-zinc-500 leading-relaxed pt-1">
-                Your medication data stays on this device. Only the medication list you choose to share — plus messages
-                and notes — are stored in your encrypted care-team account.
+                Your medication data stays on this device. Only the medication list you choose to share - plus messages
+                and notes - are stored in your encrypted care-team account.
               </p>
             </form>
           )}

@@ -62,7 +62,7 @@ export const BackupExportModal: React.FC<BackupExportModalProps> = ({
       const requiredCollections = ['patients', 'medications', 'allergies'];
       const missing = requiredCollections.filter(k => !Array.isArray(parsed[k]));
       if (missing.length > 0) {
-        throw new Error(`Not a MedSafe backup — missing: ${missing.join(', ')}.`);
+        throw new Error(`Not a MedSafe backup - missing: ${missing.join(', ')}.`);
       }
 
       onRestoreState(parsed);

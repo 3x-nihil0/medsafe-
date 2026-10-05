@@ -6,7 +6,7 @@ import type { NewProfileInput } from '../App';
 
 interface AuthModalProps {
   isOpen: boolean;
-  /** False on first run — the app cannot be used until a profile exists. */
+  /** False on first run - the app cannot be used until a profile exists. */
   canClose: boolean;
   onClose: () => void;
   patients: Patient[];

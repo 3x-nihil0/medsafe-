@@ -14,7 +14,7 @@ ios/App/Pods/
 ios/App/build/
 local.properties
 
-# Never commit signing keys — losing them (or leaking them) breaks updates
+# Never commit signing keys - losing them (or leaking them) breaks updates
 *.keystore
 *.jks
 *.p12

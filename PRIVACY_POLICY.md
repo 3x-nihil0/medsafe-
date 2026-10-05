@@ -1,4 +1,4 @@
-# MedSafe — Privacy Policy
+# MedSafe - Privacy Policy
 
 **Effective date:** 2 October 2026
 
@@ -19,7 +19,7 @@ and in the app's own storage for the Android/iOS version):
 - Documented drug allergies and reactions
 - Medications, doses, schedules and inventory counts
 - Dose history, refill notifications and safety alerts
-- Appearance preferences and the optional PIN (stored only as a salted hash — never the PIN)
+- Appearance preferences and the optional PIN (stored only as a salted hash - never the PIN)
 - Any photos you attach to a medication
 
 ## 2. What the app sends anywhere
@@ -36,20 +36,20 @@ The app works with no internet connection once installed.
 ## 3. Notifications
 
 Dose notifications are produced locally by the app. They are not sent by a remote messaging
-service and are never read by us — because there is no "us" in the data path: the software has
+service and are never read by us - because there is no "us" in the data path: the software has
 no backend.
 
 ## 4. Backups
 
 Your data leaves the device only if **you** export it: *About → Back up / restore* creates a
-JSON file that you control. That file contains your health information in plain text — share it
+JSON file that you control. That file contains your health information in plain text - share it
 carefully. Restoring a backup replaces the data on that device.
 
 ## 5. The PIN lock
 
 The optional PIN is an app lock, not encryption. It is stored as a salted PBKDF2 hash and cannot
 be read back, but the health records themselves are stored unencrypted on the device. Anyone who
-removes the lock or has full access to an unlocked device can read them — the same as with most
+removes the lock or has full access to an unlocked device can read them - the same as with most
 apps that do not use full-disk encryption.
 
 ## 6. Children
@@ -63,7 +63,7 @@ guardian.
 - PWA: clearing the site's browser data or removing the installed app also deletes it.
 - Android: uninstalling the app deletes its local storage.
 
-Because there is no server, deletion on your device is complete — no copies exist elsewhere.
+Because there is no server, deletion on your device is complete - no copies exist elsewhere.
 
 ## 8. Your rights
 

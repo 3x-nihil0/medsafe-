@@ -12,7 +12,7 @@ interface SafetyViewProps {
   drugRegistry: DrugRegistryItem[];
   onAddAllergy: (newAllergy: Omit<Allergy, 'allergyID'>) => void;
   onRemoveAllergy: (allergyID: number) => void;
-  /** Care-team tab content (doctor directory, chat, notes) — rendered lazily by the parent. */
+  /** Care-team tab content (doctor directory, chat, notes) - rendered lazily by the parent. */
   careTeam?: React.ReactNode;
 }
 

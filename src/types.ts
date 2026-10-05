@@ -285,7 +285,7 @@ export interface SharedAllergyItem {
   symptoms?: string;
 }
 
-/** What a linked doctor can read — built on the patient's device. */
+/** What a linked doctor can read - built on the patient's device. */
 export interface MedSnapshot {
   patientName: string;
   conditions: string[];

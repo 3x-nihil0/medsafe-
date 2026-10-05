@@ -206,7 +206,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ profile, onSig
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${a.reactionSeverity === 'severe' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
                           {a.reactionSeverity}
                         </span>
-                        {a.symptoms && <span className="text-slate-400">— {a.symptoms}</span>}
+                        {a.symptoms && <span className="text-slate-400">- {a.symptoms}</span>}
                       </div>
                     ))}
                   </div>
