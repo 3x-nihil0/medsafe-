@@ -11,7 +11,15 @@ import { sendDesktopNotification } from './lib/notificationService';
 import { readCollection, writeCollection, readSetting, writeSetting, eraseAllData } from './services/store';
 import { isPinSet, setPin, clearPin } from './lib/appLock';
 import { AppLockScreen } from './components/AppLockScreen';
-import { isCloudEnabled, subscribeAuth, currentSession, fetchProfile, signOut as cloudSignOut } from './lib/cloud';
+import {
+  isCloudEnabled,
+  subscribeAuth,
+  currentSession,
+  fetchProfile,
+  fetchUnreadCount,
+  signOut as cloudSignOut
+} from './lib/cloud';
+import { useMessageSync } from './hooks/useMessageSync';
 
 // Code-split views keep the initial install download small
 const MedicationCabinetView = lazy(() => import('./components/MedicationCabinetView').then(m => ({ default: m.MedicationCabinetView })));
@@ -127,12 +135,16 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isCloudAuthOpen, setIsCloudAuthOpen] = useState(false);
+  // 'setnew' = the user opened an emailed password-recovery link.
+  const [cloudAuthMode, setCloudAuthMode] = useState<'signin' | 'signup' | 'reset' | 'setnew'>('signin');
 
   // ------------------------------------------- cloud care team (Supabase)
   // Optional layer: without env keys nothing here runs and the app stays
   // a single-device local-first tool, exactly as before.
   const [cloudProfile, setCloudProfile] = useState<CloudProfile | null>(null);
   const [doctorNotes, setDoctorNotes] = useState<ClinicalNote[]>([]);
+  // Unread messages from my care team - shown as a badge on Safety > Care.
+  const [careUnread, setCareUnread] = useState(0);
 
   useEffect(() => {
     if (!isCloudEnabled()) return;
@@ -153,7 +165,14 @@ export default function App() {
       }
     };
     let unsub: (() => void) | undefined;
-    subscribeAuth(session => loadProfile(session?.user.id ?? null))
+    subscribeAuth((session, event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // The user clicked the emailed reset link - ask for a new password.
+        setCloudAuthMode('setnew');
+        setIsCloudAuthOpen(true);
+      }
+      loadProfile(session?.user.id ?? null);
+    })
       .then(u => {
         if (cancelled) u();
         else unsub = u;
@@ -167,10 +186,35 @@ export default function App() {
   }, []);
 
   // A successful sign-in closes the auth sheet no matter which path set it
-  // (explicit callback or the auth-state subscription).
+  // (explicit callback or the auth-state subscription). The password-recovery
+  // sheet stays open on purpose - it still has to collect the new password.
   useEffect(() => {
-    if (cloudProfile) setIsCloudAuthOpen(false);
-  }, [cloudProfile]);
+    if (cloudProfile && cloudAuthMode !== 'setnew') setIsCloudAuthOpen(false);
+  }, [cloudProfile, cloudAuthMode]);
+
+  const refreshCareUnread = useCallback(async () => {
+    if (!isCloudEnabled()) return;
+    try {
+      setCareUnread(await fetchUnreadCount());
+    } catch {
+      // The badge is cosmetic: transient network/RLS failures just keep the
+      // last known count on screen until the next sync event.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!cloudProfile) {
+      setCareUnread(0);
+      return;
+    }
+    void refreshCareUnread();
+  }, [cloudProfile, refreshCareUnread]);
+
+  // Realtime: the count moves the moment a message arrives or is marked read
+  // (falls back to 15s polling inside the hook if realtime is unavailable).
+  useMessageSync(() => {
+    void refreshCareUnread();
+  }, Boolean(cloudProfile));
 
   const handleCloudSignedIn = async (userId: string) => {
     try {
@@ -700,6 +744,7 @@ export default function App() {
                       drugRegistry={drugRegistry}
                       onAddAllergy={handleAddAllergy}
                       onRemoveAllergy={handleRemoveAllergy}
+                      careUnread={careUnread}
                       careTeam={
                         <CareTeamView
                           patient={activePatient}
@@ -801,7 +846,11 @@ export default function App() {
         {isCloudAuthOpen && (
           <CloudAuthModal
             isOpen={isCloudAuthOpen}
-            onClose={() => setIsCloudAuthOpen(false)}
+            initialMode={cloudAuthMode}
+            onClose={() => {
+              setIsCloudAuthOpen(false);
+              setCloudAuthMode('signin');
+            }}
             onSignedIn={handleCloudSignedIn}
           />
         )}

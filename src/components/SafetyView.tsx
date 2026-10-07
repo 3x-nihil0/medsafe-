@@ -14,6 +14,8 @@ interface SafetyViewProps {
   onRemoveAllergy: (allergyID: number) => void;
   /** Care-team tab content (doctor directory, chat, notes) - rendered lazily by the parent. */
   careTeam?: React.ReactNode;
+  /** Unread care-team messages, shown as a badge on the Care sub-tab. */
+  careUnread?: number;
 }
 
 export const SafetyView: React.FC<SafetyViewProps> = ({
@@ -23,7 +25,8 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
   drugRegistry,
   onAddAllergy,
   onRemoveAllergy,
-  careTeam
+  careTeam,
+  careUnread = 0
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'allergies' | 'history' | 'drugs' | 'care'>('allergies');
 
@@ -90,6 +93,11 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
         >
           <Users className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
           <span>Care</span>
+          {careUnread > 0 && (
+            <span className="min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+              {careUnread > 99 ? '99+' : careUnread}
+            </span>
+          )}
         </button>
       </div>
 

@@ -19,11 +19,13 @@ import {
   respondToCareLink,
   fetchMessages,
   sendMessage,
+  markThreadRead,
   fetchNotes,
   addNote,
   fetchSnapshot,
   friendlyError
 } from '../lib/cloud';
+import { useMessageSync } from '../hooks/useMessageSync';
 
 interface DoctorDashboardProps {
   profile: CloudProfile;
@@ -71,30 +73,30 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ profile, onSig
         fetchMessages(link.id)
       ]);
       setDetail({ link, snapshot, notes, messages, noteDraft: '', messageDraft: '' });
+      // Opening the thread counts the patient's messages as read for you.
+      markThreadRead(link.id).catch(() => undefined);
     } catch (err) {
       setError(friendlyError(err) || 'Could not open the patient.');
     }
   };
 
-  // Poll the open patient thread
-  useEffect(() => {
+  // Keep the open patient thread live: realtime when the project has the
+  // messages table in its realtime publication, otherwise polling fallback.
+  const reloadThread = useCallback(async () => {
     if (!detail) return;
     const linkId = detail.link.id;
-    let alive = true;
-    const load = async () => {
-      try {
-        const ms = await fetchMessages(linkId);
-        if (alive) setDetail(prev => (prev && prev.link.id === linkId ? { ...prev, messages: ms } : prev));
-      } catch {
-        /* transient */
-      }
-    };
-    const interval = setInterval(load, 15_000);
-    return () => {
-      alive = false;
-      clearInterval(interval);
-    };
+    try {
+      const ms = await fetchMessages(linkId);
+      setDetail(prev => (prev && prev.link.id === linkId ? { ...prev, messages: ms } : prev));
+      markThreadRead(linkId).catch(() => undefined);
+    } catch {
+      /* transient - retried on the next sync event */
+    }
   }, [detail?.link.id]);
+
+  useMessageSync(() => {
+    void reloadThread();
+  }, Boolean(detail));
 
   const respond = async (linkId: string, status: 'active' | 'declined') => {
     setBusy(true);

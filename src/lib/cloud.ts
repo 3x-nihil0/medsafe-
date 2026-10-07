@@ -13,18 +13,32 @@
 import type { SupabaseClient, Session } from '@supabase/supabase-js';
 import type { CloudProfile, CareLink, CloudMessage, ClinicalNote, MedSnapshot } from '../types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// `import.meta.env` is undefined outside Vite (e.g. `tsx` test runs), so the
+// optional chain keeps this module importable in tests without a bundler.
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const isCloudEnabled = (): boolean => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 let clientPromise: Promise<SupabaseClient> | null = null;
 
 /**
+ * Test seam: the formal suite injects a fake client so sign-up, care-link and
+ * messaging flows can be exercised offline and deterministically. Never set
+ * outside tests.
+ */
+let injectedClient: SupabaseClient | null = null;
+export function setCloudClientForTests(client: SupabaseClient | null): void {
+  injectedClient = client;
+  clientPromise = null;
+}
+
+/**
  * Lazily load the Supabase client - the library only ships to devices that
  * actually call a cloud function, keeping the offline bundle small.
  */
 function db(): Promise<SupabaseClient> {
+  if (injectedClient) return Promise.resolve(injectedClient);
   if (!isCloudEnabled()) {
     return Promise.reject(
       new Error('Cloud features are not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.')
@@ -51,6 +65,24 @@ export function friendlyError(err: unknown): string {
   if (/failed to fetch|networkerror|load resource/i.test(msg)) {
     return 'Could not reach the care-team service - check your internet connection, and that the Supabase keys in .env are correct.';
   }
+  if (/invalid login credentials|invalid_credentials/i.test(msg)) {
+    return 'Email or password is not correct. Check them, or use "Forgot password?" below.';
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return 'This email is not confirmed yet. Open the confirmation email we sent you (look in spam), or resend it from the sign-up form.';
+  }
+  if (/user already registered|already registered|already exists/i.test(msg)) {
+    return 'An account with this email already exists - switch to "Sign in".';
+  }
+  if (/password should be at least|weak password/i.test(msg)) {
+    return 'That password is too short - use at least 6 characters.';
+  }
+  if (/rate limit|too many requests|429/i.test(msg)) {
+    return 'Too many attempts in a row. Wait a minute, then try again.';
+  }
+  if (/jwt|not authorized|permission denied|row-level security/i.test(msg)) {
+    return 'Your session is no longer valid or you do not have access to this record. Sign in again, or ask your doctor to resend the care request.';
+  }
   return msg || 'Something went wrong. Please try again.';
 }
 
@@ -71,10 +103,12 @@ export async function signUpWithEmail(
   const user = data.user;
   if (!user) throw new Error('Could not create the account.');
   if (!data.session) {
-    // Without a session, row-level security blocks the profile insert.
-    // Setup docs say to disable email confirmation for this project.
+    // Without a session, row-level security blocks the profile insert, so
+    // sign-in finishes only after the confirmation email is opened. Offer the
+    // resend path; disabling confirmation in Supabase (Authentication →
+    // Providers → Email → "Confirm email") skips this step entirely.
     throw new Error(
-      'Account created but email confirmation is enabled. In Supabase: Authentication → Providers → Email → turn off “Confirm email”, then sign in.'
+      'Your account was created, but email confirmation is on. Open the confirmation email we sent (look in spam), or tap "Resend confirmation email" in this form, then sign in.'
     );
   }
   must(
@@ -106,6 +140,28 @@ export async function signOut(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** Ask Supabase to email a password-reset link. Always reports success for
+ * unknown addresses (no account enumeration), so the copy is unconditional. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const redirectTo = typeof window === 'undefined' ? undefined : `${window.location.origin}${window.location.pathname}`;
+  const { error } = await (await db()).auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : {});
+  if (error) throw new Error(error.message);
+}
+
+/** Re-send the sign-up confirmation email (used when sign-up reports
+ * "email confirmation is enabled"). */
+export async function resendConfirmation(email: string): Promise<void> {
+  const { error } = await (await db()).auth.resend({ type: 'signup', email });
+  if (error) throw new Error(error.message);
+}
+
+/** Set a new password after the user clicked a recovery link. */
+export async function updatePassword(newPassword: string): Promise<void> {
+  if (newPassword.length < 6) throw new Error('Password should be at least 6 characters.');
+  const { error } = await (await db()).auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchProfile(userId: string): Promise<CloudProfile | null> {
   const res = await (await db())
     .from('profiles')
@@ -124,12 +180,15 @@ export async function fetchProfile(userId: string): Promise<CloudProfile | null>
   };
 }
 
-/** Subscribe to auth changes; returns an unsubscribe function. */
-export async function subscribeAuth(cb: (session: Session | null) => void): Promise<() => void> {
-  const { data } = await (await db()).auth.onAuthStateChange((_event, session) => {
+/** Subscribe to auth changes; returns an unsubscribe function.
+ * The event name is forwarded so the app can react to PASSWORD_RECOVERY. */
+export async function subscribeAuth(
+  cb: (session: Session | null, event: string | null) => void
+): Promise<() => void> {
+  const { data } = await (await db()).auth.onAuthStateChange((event, session) => {
     // Deferred: supabase-js must not run other queries inside the callback
     // itself (it holds an internal auth lock while it runs).
-    setTimeout(() => cb(session), 0);
+    setTimeout(() => cb(session, event), 0);
   });
   return () => data.subscription.unsubscribe();
 }
@@ -250,6 +309,112 @@ export async function sendMessage(linkId: string, senderId: string, body: string
     await (await db()).from('messages').insert({ link_id: linkId, sender_id: senderId, body: text.slice(0, 4000) }).select(),
     'Message could not be sent.'
   );
+}
+
+// ------------------------------------------------ unread tracking
+
+let readReceiptWarned = false;
+
+/** How many messages written by someone else in my care links are still
+ * unread. Drives the badge on the Care sub-tab. */
+export async function fetchUnreadCount(): Promise<number> {
+  const supabase = await db();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr) throw new Error(userErr.message);
+  const uid = userData.user?.id;
+  if (!uid) return 0;
+
+  const linksRes = await supabase
+    .from('care_links')
+    .select('id')
+    .or(`patient_id.eq.${uid},doctor_id.eq.${uid}`);
+  if (linksRes.error) throw new Error(linksRes.error.message);
+  const linkIds = (linksRes.data ?? []).map((r: { id: string }) => r.id);
+  if (linkIds.length === 0) return 0;
+
+  const res = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .in('link_id', linkIds)
+    .neq('sender_id', uid)
+    .is('read_at', null);
+  if (res.error) throw new Error(res.error.message);
+  return res.count ?? 0;
+}
+
+/** Flag every message the other side sent in this thread as read.
+ * Requires the `participants update messages` policy in supabase/schema.sql
+ * (patch: supabase/patches/20261007_messages_read_and_realtime.sql). */
+export async function markThreadRead(linkId: string): Promise<void> {
+  const supabase = await db();
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr) throw new Error(userErr.message);
+  const uid = userData.user?.id;
+  if (!uid) return;
+  const { error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('link_id', linkId)
+    .neq('sender_id', uid)
+    .is('read_at', null);
+  if (error) {
+    // One warning, not one per refresh: the app degrades to "no read receipt"
+    // until the patch SQL has been run.
+    if (!readReceiptWarned) {
+      readReceiptWarned = true;
+      console.warn(
+        'MedSafe: read receipts unavailable (run supabase/patches/20261007_messages_read_and_realtime.sql).',
+        error.message
+      );
+    }
+  }
+}
+
+export type MessageSync = {
+  /** Stop listening (must be called on unmount). */
+  close: () => void;
+  /** Resolves true once realtime confirmed the subscription, false when
+   * realtime is unavailable - callers then keep their polling fallback. */
+  ready: Promise<boolean>;
+};
+
+/**
+ * Realtime subscriptions for the messages table. Row-level security still
+ * applies server-side: events only ever carry rows the signed-in user may
+ * read. `ready === false` means the table is not in the realtime publication
+ * (or realtime is off) - callers must fall back to polling.
+ */
+export async function subscribeToMessages(
+  onChange: () => void,
+  events: Array<'INSERT' | 'UPDATE'> = ['INSERT']
+): Promise<MessageSync> {
+  const supabase = await db();
+  let channel = supabase.channel(`messages-${Math.random().toString(36).slice(2, 8)}`);
+  for (const event of events) {
+    channel = channel.on('postgres_changes', { event, schema: 'public', table: 'messages' }, () => onChange());
+  }
+
+  const ready = new Promise<boolean>(resolve => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(ok);
+    };
+    const timer = setTimeout(() => finish(false), 10_000);
+    channel.subscribe(status => {
+      if (status === 'SUBSCRIBED') finish(true);
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') finish(false);
+    });
+  });
+
+  return {
+    close: () => {
+      void supabase.removeChannel(channel);
+    },
+    ready
+  };
 }
 
 // --------------------------------------------------- clinical notes

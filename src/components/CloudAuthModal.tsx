@@ -1,12 +1,25 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, Stethoscope, User, Mail, KeyRound, BadgeCheck, ShieldCheck } from 'lucide-react';
 import type { CloudRole } from '../types';
-import { isCloudEnabled, signInWithEmail, signUpWithEmail, friendlyError } from '../lib/cloud';
+import {
+  isCloudEnabled,
+  signInWithEmail,
+  signUpWithEmail,
+  requestPasswordReset,
+  resendConfirmation,
+  updatePassword,
+  currentSession,
+  friendlyError
+} from '../lib/cloud';
+
+type AuthMode = 'signin' | 'signup' | 'reset' | 'setnew';
 
 interface CloudAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialRole?: CloudRole;
+  /** Which screen to show first ('setnew' = arrived via a recovery link). */
+  initialMode?: AuthMode;
   /** Called with the Supabase user id once sign-in/registration succeeds. */
   onSignedIn: (userId: string) => void;
 }
@@ -22,8 +35,14 @@ const SPECIALTIES = [
   'Other'
 ];
 
-export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({ isOpen, onClose, initialRole, onSignedIn }) => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({
+  isOpen,
+  onClose,
+  initialRole,
+  initialMode = 'signin',
+  onSignedIn
+}) => {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [role, setRole] = useState<CloudRole>(initialRole || 'patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,17 +50,71 @@ export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({ isOpen, onClose,
   const [specialty, setSpecialty] = useState(SPECIALTIES[0]);
   const [licenseNo, setLicenseNo] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Hard guard: busy state updates asynchronously, so a rapid double tap
   // could otherwise fire two sign-ups (the second one failing on duplicate).
   const submittingRef = useRef(false);
 
+  // Re-sync with the outside world (e.g. a password-recovery link reopened
+  // the sheet in 'setnew') every time the sheet is shown.
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode(initialMode);
+    setError(null);
+    setNotice(null);
+  }, [isOpen, initialMode]);
+
   if (!isOpen) return null;
+
+  const go = async (work: () => Promise<void>) => {
+    if (submittingRef.current) return;
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    submittingRef.current = true;
+    try {
+      await work();
+    } catch (err) {
+      setError(friendlyError(err));
+    } finally {
+      setBusy(false);
+      submittingRef.current = false;
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submittingRef.current) return;
-    setError(null);
+
+    if (mode === 'reset') {
+      if (!email.trim()) {
+        setError('Email is required.');
+        return;
+      }
+      await go(async () => {
+        await requestPasswordReset(email.trim());
+        setNotice(
+          'If that address has an account, a reset link is on its way. Open it on this device to choose a new password (check your spam folder).'
+        );
+        setMode('signin');
+      });
+      return;
+    }
+
+    if (mode === 'setnew') {
+      if (!password) {
+        setError('Choose a new password (at least 6 characters).');
+        return;
+      }
+      await go(async () => {
+        await updatePassword(password);
+        setPassword('');
+        const session = await currentSession();
+        if (session?.user) onSignedIn(session.user.id);
+        else onClose();
+      });
+      return;
+    }
 
     if (!email.trim() || !password) {
       setError('Email and password are required.');
@@ -52,9 +125,7 @@ export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({ isOpen, onClose,
       return;
     }
 
-    setBusy(true);
-    submittingRef.current = true;
-    try {
+    await go(async () => {
       if (mode === 'signin') {
         const uid = await signInWithEmail(email.trim(), password);
         onSignedIn(uid);
@@ -67,12 +138,31 @@ export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({ isOpen, onClose,
         });
         onSignedIn(uid);
       }
-    } catch (err) {
-      setError(friendlyError(err));
-    } finally {
-      setBusy(false);
-      submittingRef.current = false;
+    });
+  };
+
+  const resend = async () => {
+    if (!email.trim()) {
+      setError('Enter your email above first, then tap resend.');
+      return;
     }
+    await go(async () => {
+      await resendConfirmation(email.trim());
+      setNotice('Confirmation email re-sent - check your inbox (and spam folder), then sign in.');
+    });
+  };
+
+  const titles: Record<AuthMode, string> = {
+    signin: 'Sign in to care team',
+    signup: 'Create your account',
+    reset: 'Reset your password',
+    setnew: 'Choose a new password'
+  };
+  const subtitles: Record<AuthMode, string> = {
+    signin: 'Connect with your doctor - messaging, notes and your shared medication list.',
+    signup: 'A patient or doctor account - your local medication data stays on this device.',
+    reset: 'We email you a single-use secure link, valid for a short time.',
+    setnew: 'Pick a new password for your care-team account. Your local data is untouched.'
   };
 
   return (
@@ -90,10 +180,10 @@ export const CloudAuthModal: React.FC<CloudAuthModalProps> = ({ isOpen, onClose,
             </div>
             <div className="min-w-0">
               <h2 id="cloud-auth-title" className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-                {mode === 'signin' ? 'Sign in to care team' : 'Create your account'}
+                {titles[mode]}
               </h2>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-snug mt-0.5">
-                Connect with your doctor - messaging, notes and your shared medication list.
+                {subtitles[mode]}
               </p>
             </div>
           </div>
@@ -125,6 +215,11 @@ VITE_SUPABASE_ANON_KEY=…`}
               {error && (
                 <div role="alert" className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-[11px] leading-snug">
                   {error}
+                </div>
+              )}
+              {notice && (
+                <div role="status" className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200 text-[11px] leading-snug">
+                  {notice}
                 </div>
               )}
 
@@ -202,6 +297,7 @@ VITE_SUPABASE_ANON_KEY=…`}
                 </div>
               )}
 
+              {mode !== 'setnew' && (
               <div>
                 <label htmlFor="cloud-email" className="block font-semibold text-slate-700 dark:text-zinc-300 mb-1">
                   Email *
@@ -220,10 +316,12 @@ VITE_SUPABASE_ANON_KEY=…`}
                   />
                 </div>
               </div>
+              )}
 
+              {mode !== 'reset' && (
               <div>
                 <label htmlFor="cloud-password" className="block font-semibold text-slate-700 dark:text-zinc-300 mb-1">
-                  Password *
+                  {mode === 'setnew' ? 'New password *' : 'Password *'}
                 </label>
                 <div className="relative">
                   <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -240,6 +338,7 @@ VITE_SUPABASE_ANON_KEY=…`}
                   />
                 </div>
               </div>
+              )}
 
               <button
                 type="submit"
@@ -248,24 +347,91 @@ VITE_SUPABASE_ANON_KEY=…`}
               >
                 {busy ? (
                   <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : mode === 'reset' ? (
+                  <Mail className="w-4 h-4" />
                 ) : mode === 'signin' ? (
                   <BadgeCheck className="w-4 h-4" />
                 ) : (
                   <ShieldCheck className="w-4 h-4" />
                 )}
-                <span>{mode === 'signin' ? 'Sign in' : role === 'doctor' ? 'Register as doctor' : 'Create patient account'}</span>
+                <span>
+                  {mode === 'signin'
+                    ? 'Sign in'
+                    : mode === 'reset'
+                      ? 'Send reset link'
+                      : mode === 'setnew'
+                        ? 'Save new password'
+                        : role === 'doctor'
+                          ? 'Register as doctor'
+                          : 'Create patient account'}
+                </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'signin' ? 'signup' : 'signin');
-                  setError(null);
-                }}
-                className="w-full py-2 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
-              >
-                {mode === 'signin' ? 'New here? Create an account (patient or doctor)' : 'Already registered? Sign in'}
-              </button>
+              {mode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setError(null);
+                    setNotice(null);
+                  }}
+                  className="w-full py-2 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
+                >
+                  New here? Create an account (patient or doctor)
+                </button>
+              )}
+
+              {mode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('reset');
+                    setError(null);
+                    setNotice(null);
+                  }}
+                  className="w-full py-1 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
+                >
+                  Forgot password?
+                </button>
+              )}
+
+              {mode === 'signup' && (
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('signin');
+                      setError(null);
+                      setNotice(null);
+                    }}
+                    className="w-full py-2 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
+                  >
+                    Already registered? Sign in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resend}
+                    disabled={busy}
+                    className="w-full py-1.5 text-[11px] text-teal-700 dark:text-teal-300 hover:underline transition disabled:opacity-60"
+                  >
+                    Resend confirmation email
+                  </button>
+                </div>
+              )}
+
+              {mode === 'reset' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signin');
+                    setError(null);
+                    setNotice(null);
+                  }}
+                  className="w-full py-2 text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
+                >
+                  Back to sign in
+                </button>
+              )}
 
               <p className="text-[10px] text-slate-400 dark:text-zinc-500 leading-relaxed pt-1">
                 Your medication data stays on this device. Only the medication list you choose to share - plus messages

@@ -147,6 +147,27 @@ create policy "participants send messages"
     )
   );
 
+-- participants may update their own thread (used for read receipts: the
+-- client only ever sets read_at, and only for rows it can already see).
+drop policy if exists "participants update messages" on public.messages;
+create policy "participants update messages"
+  on public.messages for update
+  to authenticated
+  using (
+    exists (
+      select 1 from public.care_links c
+      where c.id = link_id
+        and (c.patient_id = auth.uid() or c.doctor_id = auth.uid())
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.care_links c
+      where c.id = link_id
+        and (c.patient_id = auth.uid() or c.doctor_id = auth.uid())
+    )
+  );
+
 -- clinical_notes: participants may read; only the linked doctor may write.
 drop policy if exists "participants read notes" on public.clinical_notes;
 create policy "participants read notes"
@@ -197,10 +218,11 @@ create policy "owner or active doctor reads snapshot"
     )
   );
 
--- Optional: enable realtime chat (messages are polled as a fallback,
--- so this step is nice-to-have, not required).
--- do $$
--- begin
---   alter publication supabase_realtime add table public.messages;
--- exception when duplicate_object then null;
--- end $$;
+-- Realtime chat: without this the app falls back to 15s polling.
+-- Adding a table that is already in the publication raises duplicate_object,
+-- which we swallow so this script stays idempotent.
+do $$
+begin
+  alter publication supabase_realtime add table public.messages;
+exception when duplicate_object then null;
+end $$;

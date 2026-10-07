@@ -21,10 +21,12 @@ import {
   cancelCareLink,
   fetchMessages,
   sendMessage,
+  markThreadRead,
   fetchNotes,
   pushSnapshot,
   friendlyError
 } from '../lib/cloud';
+import { useMessageSync } from '../hooks/useMessageSync';
 import { toLocalDateStr } from '../services/ruleEngine';
 
 interface CareTeamViewProps {
@@ -125,25 +127,32 @@ export const CareTeamView: React.FC<CareTeamViewProps> = ({
     refresh();
   }, [refresh]);
 
-  // Poll the open thread so messages arrive without realtime setup
-  useEffect(() => {
+  // Keep the open thread live: realtime when the project has messages in the
+  // realtime publication, otherwise useMessageSync falls back to 15s polling.
+  const reloadThread = useCallback(async () => {
     if (!threadLink) return;
-    let alive = true;
-    const load = async () => {
-      try {
-        const ms = await fetchMessages(threadLink.id);
-        if (alive) setMessages(ms);
-      } catch {
-        /* transient - retried on next poll */
-      }
-    };
-    load();
-    const interval = setInterval(load, 15_000);
-    return () => {
-      alive = false;
-      clearInterval(interval);
-    };
+    try {
+      const ms = await fetchMessages(threadLink.id);
+      setMessages(ms);
+      // Opening/refreshing a thread marks the other side's messages as read
+      // (no-op with a single console warning until the patch SQL is run).
+      markThreadRead(threadLink.id).catch(() => undefined);
+    } catch {
+      /* transient - retried on the next sync event */
+    }
   }, [threadLink]);
+
+  useEffect(() => {
+    if (!threadLink) {
+      setMessages([]);
+      return;
+    }
+    void reloadThread();
+  }, [reloadThread, threadLink]);
+
+  useMessageSync(() => {
+    void reloadThread();
+  }, Boolean(threadLink));
 
   const handleRequest = async (doctorId: string) => {
     setError(null);
