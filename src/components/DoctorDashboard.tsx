@@ -14,6 +14,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import type { CloudProfile, CareLink, CloudMessage, ClinicalNote, MedSnapshot } from '../types';
+import { getDrugClassName } from '../data/drugClasses';
 import {
   fetchDoctorLinks,
   respondToCareLink,
@@ -234,7 +235,7 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({ profile, onSig
                         </div>
                         <div className="text-slate-600 dark:text-zinc-400 mt-0.5">
                           {m.schedule} · {m.quantityPerDose} per dose · {m.dosesPerDay}× daily
-                          {m.conditionCategory && ` · for ${m.conditionCategory}`}
+                          {m.drugClass && ` · ${getDrugClassName(m.drugClass)}`}
                         </div>
                         {m.instructions && <div className="text-slate-500 dark:text-zinc-500 mt-0.5 italic">{m.instructions}</div>}
                       </div>

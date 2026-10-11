@@ -33,6 +33,7 @@ const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ defau
 const UserProfileDrawer = lazy(() => import('./components/UserProfileDrawer').then(m => ({ default: m.UserProfileDrawer })));
 const MedicationSummary = lazy(() => import('./components/MedicationSummary').then(m => ({ default: m.MedicationSummary })));
 const CloudAuthModal = lazy(() => import('./components/CloudAuthModal').then(m => ({ default: m.CloudAuthModal })));
+const EntryChoiceView = lazy(() => import('./components/EntryChoiceView').then(m => ({ default: m.EntryChoiceView })));
 const DoctorDashboard = lazy(() => import('./components/DoctorDashboard').then(m => ({ default: m.DoctorDashboard })));
 const CareTeamView = lazy(() => import('./components/CareTeamView').then(m => ({ default: m.CareTeamView })));
 
@@ -54,6 +55,7 @@ import {
   AlertLog,
   AppTheme,
   CloudProfile,
+  CloudRole,
   ClinicalNote
 } from './types';
 
@@ -137,6 +139,10 @@ export default function App() {
   const [isCloudAuthOpen, setIsCloudAuthOpen] = useState(false);
   // 'setnew' = the user opened an emailed password-recovery link.
   const [cloudAuthMode, setCloudAuthMode] = useState<'signin' | 'signup' | 'reset' | 'setnew'>('signin');
+  // Role picked on the first-run screen (only 'patient' continues locally;
+  // 'doctor' opens account creation pre-set to the doctor role).
+  const [cloudAuthRole, setCloudAuthRole] = useState<CloudRole>('patient');
+  const [entryChoice, setEntryChoice] = useState<'patient' | 'doctor' | null>(null);
 
   // ------------------------------------------- cloud care team (Supabase)
   // Optional layer: without env keys nothing here runs and the app stays
@@ -215,6 +221,17 @@ export default function App() {
   useMessageSync(() => {
     void refreshCareUnread();
   }, Boolean(cloudProfile));
+
+  /** First-run screen: patients continue into local profile setup; doctors
+   * go straight to care-team account creation with the doctor role set. */
+  const handleEntryChoice = (role: 'patient' | 'doctor') => {
+    setEntryChoice(role);
+    if (role === 'doctor') {
+      setCloudAuthRole('doctor');
+      setCloudAuthMode('signup');
+      setIsCloudAuthOpen(true);
+    }
+  };
 
   const handleCloudSignedIn = async (userId: string) => {
     try {
@@ -663,6 +680,8 @@ export default function App() {
 
   const hasProfiles = patients.length > 0;
   const isDoctorMode = cloudProfile?.role === 'doctor';
+  // Brand-new device with no local profile and nobody signed in: ask first.
+  const needsEntryChoice = !hasProfiles && !cloudProfile;
   const nowString = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -822,7 +841,7 @@ export default function App() {
         )}
 
         <AuthModal
-          isOpen={(!hasProfiles && !isDoctorMode) || isProfileModalOpen}
+          isOpen={(needsEntryChoice && entryChoice === 'patient') || isProfileModalOpen}
           canClose={hasProfiles}
           onClose={() => setIsProfileModalOpen(false)}
           patients={patients}
@@ -830,6 +849,7 @@ export default function App() {
           onSelectProfile={handleSelectProfile}
           onCreateProfile={handleCreateProfile}
           onLoadSampleData={handleLoadSampleData}
+          onSwitchToDoctor={() => handleEntryChoice('doctor')}
         />
 
         {isSummaryOpen && activePatient && (
@@ -847,12 +867,18 @@ export default function App() {
           <CloudAuthModal
             isOpen={isCloudAuthOpen}
             initialMode={cloudAuthMode}
+            initialRole={cloudAuthRole}
             onClose={() => {
               setIsCloudAuthOpen(false);
               setCloudAuthMode('signin');
+              setCloudAuthRole('patient');
             }}
             onSignedIn={handleCloudSignedIn}
           />
+        )}
+
+        {needsEntryChoice && entryChoice !== 'patient' && !isCloudAuthOpen && (
+          <EntryChoiceView onChoose={handleEntryChoice} />
         )}
 
         {isProfileDrawerOpen && activePatient && (
@@ -880,6 +906,14 @@ export default function App() {
             }}
             onLockNow={handleLockNow}
             onRemoveAppLock={handleRemovePin}
+            cloudProfile={cloudProfile}
+            onCloudSignOut={handleCloudSignOut}
+            onOpenCloudAuth={() => {
+              setIsProfileDrawerOpen(false);
+              setCloudAuthMode('signin');
+              setCloudAuthRole('patient');
+              setIsCloudAuthOpen(true);
+            }}
           />
         )}
       </Suspense>

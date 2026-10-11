@@ -19,12 +19,13 @@ import type {
   TAMSurveyResponse,
   TestCase
 } from '../types.ts';
+import { DRUG_CLASS_REGISTRY_EXTENSION } from './drugClassRegistry';
 
 /**
  * 25 Reference Medications screened for inclusion per Section 3.5.1
  * Spanning Hypertension, Diabetes, HIV, Asthma + co-prescribed classes
  */
-export const INITIAL_DRUG_REGISTRY: DrugRegistryItem[] = [
+export const BASE_INITIAL_DRUG_REGISTRY: DrugRegistryItem[] = [
   // 1. HYPERTENSION
   {
     genericName: 'Lisinopril',
@@ -586,6 +587,15 @@ export const INITIAL_DRUG_REGISTRY: DrugRegistryItem[] = [
       metabolism: 'Completely metabolized by CYP2C19 and CYP3A4'
     }
   }
+];
+
+/**
+ * Full registry = the original 25 screened meds + every drug named in the
+ * 30-class taxonomy (see src/data/drugClassRegistry.ts and drugClasses.ts).
+ */
+export const INITIAL_DRUG_REGISTRY: DrugRegistryItem[] = [
+  ...BASE_INITIAL_DRUG_REGISTRY,
+  ...DRUG_CLASS_REGISTRY_EXTENSION
 ];
 
 /**

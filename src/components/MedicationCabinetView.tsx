@@ -21,6 +21,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Medication, Patient, DrugRegistryItem } from '../types';
+import { getDrugClassName } from '../data/drugClasses';
 
 interface MedicationCabinetViewProps {
   patient: Patient;
@@ -256,7 +257,7 @@ export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
                   </div>
 
                   <span className="px-2 py-0.5 rounded text-[11px] font-medium border bg-slate-50 dark:bg-zinc-700/50 text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-zinc-700 shrink-0">
-                    {med.conditionCategory}
+                    {getDrugClassName(med.drugClass) }
                   </span>
                 </div>
 

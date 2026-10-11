@@ -9,7 +9,8 @@ import {
   Pill,
   BookOpen,
   ArrowRight,
-  FileText
+  FileText,
+  CheckCircle2
 } from 'lucide-react';
 import {
   DrugRegistryItem,
@@ -26,6 +27,13 @@ import {
   sanitizeInput,
   toLocalDateStr
 } from '../services/ruleEngine';
+import {
+  DRUG_CLASSES,
+  getDrugClassOptions,
+  getDrugClassName,
+  suggestDrugClass,
+  deriveConditionCategory
+} from '../data/drugClasses';
 
 interface AddMedicationModalProps {
   isOpen: boolean;
@@ -59,7 +67,9 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [quantityPerDose, setQuantityPerDose] = useState<number>(1);
   const [dosesPerDay, setDosesPerDay] = useState<number>(1);
   const [refillThresholdDays, setRefillThresholdDays] = useState<number>(7);
-  const [conditionCategory, setConditionCategory] = useState<ChronicConditionCategory>('hypertension');
+  const [drugClass, setDrugClass] = useState<string>(DRUG_CLASSES[0].id);
+  const [conditionCategory, setConditionCategory] = useState<ChronicConditionCategory>('general');
+  const [unverifiedConfirmed, setUnverifiedConfirmed] = useState(false);
   const [instructions, setInstructions] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [overrideReason, setOverrideReason] = useState('');
@@ -87,12 +97,22 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       setShowOverrideField(false);
       setOverrideReason('');
     }
+    if (!evaluation?.isUnverified) setUnverifiedConfirmed(false);
   }, [evaluation]);
 
   const handleSelectDrug = (item: DrugRegistryItem) => {
     setDrugInput(item.genericName);
+    // Auto-fill the therapeutic class from the registry entry (user can still change it).
+    const cls = item.drugClass || suggestDrugClass(item);
+    setDrugClass(cls);
     setConditionCategory(item.category);
-    setInstructions(`Standard clinical regimen for ${item.category}`);
+    setInstructions(`Standard clinical regimen for ${item.genericName}`);
+  };
+
+  /** Class changed manually -> keep condition in sync unless it was explicitly set. */
+  const handleClassChange = (classId: string) => {
+    setDrugClass(classId);
+    setConditionCategory(deriveConditionCategory(classId));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -138,7 +158,14 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       return;
     }
 
-    if (!evaluation.isSafe && !overrideReason.trim()) {
+    // Unverified drugs are never assumed safe: the user must explicitly confirm
+    // the entry came from a doctor's prescription before it can be saved.
+    if (evaluation.isUnverified && !unverifiedConfirmed) {
+      setValidationError("This drug is not in the verified registry. Tick the confirmation box if it came from a doctor's prescription to save it as Unverified.");
+      return;
+    }
+
+    if (!evaluation.isSafe && !evaluation.isUnverified && !overrideReason.trim()) {
       setValidationError('Please review identified conflicts and provide a therapeutic rationale override.');
       setShowOverrideField(true);
       return;
@@ -149,6 +176,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       drugName: drugSanitized.sanitized,
       normalisedGeneric: evaluation.normalisedDrug || drugSanitized.sanitized,
       atcCode: evaluation.registryItem?.atcCode,
+      drugClass,
       dosage: dosageSanitized.sanitized,
       schedule: schedule.trim() || '08:00',
       quantityRemaining: Number(quantityRemaining) || 30,
@@ -259,14 +287,31 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               ) : evaluation.isUnverified ? (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 flex items-start gap-2.5">
                   <HelpCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-xs">Unverified Medication</span>
                       <span className="px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-mono text-[10px]">Fail-Safe</span>
                     </div>
                     <p className="text-[11px] text-amber-800 dark:text-amber-400 mt-0.5">
-                      "{drugInput}" is not recognized in the clinical drug registry. Per safety specifications, unknown medications are never assumed safe.
+                      "{drugInput}" is not recognized in the clinical drug registry. Unknown medications are never assumed safe. Automated interaction and allergy checks are SKIPPED for this entry.
                     </p>
+                    {unverifiedConfirmed && (
+                      <p className="text-[11px] text-amber-800 dark:text-amber-400 mt-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Will be saved as <strong>Unverified</strong> ({getDrugClassName(drugClass)}). Clinical pharmacist review recommended.
+                      </p>
+                    )}
+                    <label className="mt-2 flex items-start gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={unverifiedConfirmed}
+                        onChange={e => setUnverifiedConfirmed(e.target.checked)}
+                        className="mt-0.5 accent-amber-600"
+                      />
+                      <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200">
+                        I confirm this drug was prescribed by a doctor (save as Unverified)
+                      </span>
+                    </label>
                   </div>
                 </div>
               ) : (
@@ -401,7 +446,21 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="add-med-condition" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">Condition Category</label>
+              <label htmlFor="add-med-drug-class" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">Drug Class</label>
+              <select
+                id="add-med-drug-class"
+                value={drugClass}
+                onChange={e => handleClassChange(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-zinc-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              >
+                {getDrugClassOptions().map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="add-med-condition" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">Condition</label>
               <select
                 id="add-med-condition"
                 value={conditionCategory}
@@ -412,7 +471,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 <option value="diabetes">Diabetes Mellitus</option>
                 <option value="hiv">HIV Management (ART)</option>
                 <option value="asthma">Asthma / Respiratory</option>
-                <option value="general">General Co-Prescription</option>
+                <option value="general">General / Not condition-specific</option>
               </select>
             </div>
 

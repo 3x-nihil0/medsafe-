@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Database, Search, Tag, Clock, Activity, ChevronDown, ChevronUp, Info, Utensils } from 'lucide-react';
 import { DrugRegistryItem } from '../types';
+import { DRUG_CLASSES, getDrugClassName } from '../data/drugClasses';
 
 interface DrugRegistryViewProps {
   drugRegistry: DrugRegistryItem[];
@@ -27,7 +28,7 @@ export const DrugRegistryView: React.FC<DrugRegistryViewProps> = ({ drugRegistry
         item.atcCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.brandNames.some(b => b.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      const matchCat = selectedCategory === 'ALL' || item.category === selectedCategory;
+      const matchCat = selectedCategory === 'ALL' || item.drugClass === selectedCategory;
 
       return matchSearch && matchCat;
     });
@@ -75,12 +76,10 @@ export const DrugRegistryView: React.FC<DrugRegistryViewProps> = ({ drugRegistry
             onChange={e => setSelectedCategory(e.target.value)}
             className="bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded px-2.5 py-1 text-slate-700 dark:text-zinc-300 focus:outline-none"
           >
-            <option value="ALL">All Categories</option>
-            <option value="hypertension">Hypertension</option>
-            <option value="diabetes">Diabetes Mellitus</option>
-            <option value="hiv">HIV Management</option>
-            <option value="asthma">Asthma / Respiratory</option>
-            <option value="general">General Co-Prescribed</option>
+            <option value="ALL">All Drug Classes</option>
+            {DRUG_CLASSES.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -102,7 +101,7 @@ export const DrugRegistryView: React.FC<DrugRegistryViewProps> = ({ drugRegistry
                     <span className="font-mono text-xs font-medium text-slate-600 dark:text-zinc-400">{drug.atcCode}</span>
                   </div>
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium uppercase bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/60 dark:border-zinc-700">
-                    {drug.category}
+                    {drug.drugClass ? getDrugClassName(drug.drugClass) : drug.category}
                   </span>
                 </div>
 

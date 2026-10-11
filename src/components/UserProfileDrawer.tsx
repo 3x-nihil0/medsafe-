@@ -13,9 +13,10 @@ import {
   BellOff,
   Check,
   Lock,
-  KeyRound
+  KeyRound,
+  LogOut
 } from 'lucide-react';
-import { Patient, AppTheme, Allergy } from '../types';
+import { Patient, AppTheme, Allergy, CloudProfile } from '../types';
 import { PhotoUploadDropzone } from './PhotoUploadDropzone';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -37,6 +38,10 @@ interface UserProfileDrawerProps {
   onSetupAppLock: () => void;
   onLockNow: () => void;
   onRemoveAppLock: () => void;
+  /** Signed-in care-team account, or null when signed out. */
+  cloudProfile?: CloudProfile | null;
+  onCloudSignOut?: () => void;
+  onOpenCloudAuth?: () => void;
 }
 
 export const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({
@@ -56,7 +61,10 @@ export const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({
   appLockEnabled,
   onSetupAppLock,
   onLockNow,
-  onRemoveAppLock
+  onRemoveAppLock,
+  cloudProfile = null,
+  onCloudSignOut,
+  onOpenCloudAuth
 }) => {
   if (!isOpen) return null;
 
@@ -378,6 +386,61 @@ export const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>Protect this app with a PIN</span>
               </button>
+            )}
+          </div>
+
+          {/* Care team account */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-zinc-100">
+                <Users className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <span>Care team account</span>
+              </div>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                  cloudProfile
+                    ? 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300'
+                    : 'bg-slate-200 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400'
+                }`}
+              >
+                {cloudProfile ? 'SIGNED IN' : 'SIGNED OUT'}
+              </span>
+            </div>
+
+            {cloudProfile ? (
+              <>
+                <div className="text-[11px] text-slate-600 dark:text-zinc-400 leading-relaxed">
+                  <span className="font-semibold text-slate-900 dark:text-zinc-100">{cloudProfile.fullName}</span>
+                  {' - '}
+                  {cloudProfile.role === 'doctor' ? 'Doctor' : 'Patient'} account. Your list, messages and notes sync
+                  through this account.
+                </div>
+                {onCloudSignOut && (
+                  <button
+                    onClick={onCloudSignOut}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/30 transition active:scale-[0.99]"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign out of care team</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  Connect to share your medication list with a doctor, message them and read their notes - from any
+                  device.
+                </p>
+                {onOpenCloudAuth && (
+                  <button
+                    onClick={onOpenCloudAuth}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold transition active:scale-[0.99]"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Sign in / create account</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
 

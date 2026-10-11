@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Printer, Share2, Copy, ShieldCheck, AlertTriangle, Check } from 'lucide-react';
 import { Patient, Medication, Allergy, ClinicalNote } from '../types';
+import { getDrugClassName } from '../data/drugClasses';
 import { toLocalDateStr } from '../services/ruleEngine';
 
 interface MedicationSummaryProps {
@@ -263,7 +264,7 @@ export const MedicationSummary: React.FC<MedicationSummaryProps> = ({
                       <Row label="Schedule" value={m.schedule} />
                       <Row label="Dose" value={`${m.quantityPerDose} per dose, ${m.dosesPerDay}× daily`} />
                       <Row label="Prescribed" value={m.prescribedDate} />
-                      <Row label="For" value={m.conditionCategory} />
+                      <Row label="For" value={m.drugClass ? getDrugClassName(m.drugClass) : m.conditionCategory} />
                       {m.instructions && (
                         <div className="sm:col-span-2">
                           <Row label="Directions" value={m.instructions} />

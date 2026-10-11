@@ -59,7 +59,8 @@ function buildSnapshot(patient: Patient, medications: Medication[], allergies: A
       dosesPerDay: m.dosesPerDay,
       quantityRemaining: m.quantityRemaining,
       instructions: m.instructions,
-      conditionCategory: m.conditionCategory
+      conditionCategory: m.conditionCategory,
+      drugClass: m.drugClass
     })),
     generatedOn: toLocalDateStr()
   };

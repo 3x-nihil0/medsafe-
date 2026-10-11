@@ -61,6 +61,8 @@ export interface Medication {
   drugName: string;
   normalisedGeneric: string;
   atcCode?: string;
+  /** Therapeutic class id from DRUG_CLASSES taxonomy (typed free-text allowed for unregistered drugs). */
+  drugClass?: string;
   dosage: string;
   schedule: string; // Comma separated times e.g. "08:00, 20:00"
   quantityRemaining: number;
@@ -179,6 +181,8 @@ export interface DrugRegistryItem {
   genericName: string;
   atcCode: string;
   category: ChronicConditionCategory;
+  /** Primary therapeutic class id (DRUG_CLASSES); falls back to 'general' co-prescription. */
+  drugClass?: string;
   brandNames: string[];
   commonForms: string[];
   allergenGroup?: string;
@@ -277,6 +281,7 @@ export interface SharedMedItem {
   quantityRemaining: number;
   instructions?: string;
   conditionCategory?: string;
+  drugClass?: string;
 }
 
 export interface SharedAllergyItem {

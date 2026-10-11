@@ -9,6 +9,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Reminder, Medication, Patient } from '../types';
+import { getDrugClassName } from '../data/drugClasses';
 
 interface TodayScheduleViewProps {
   patient: Patient;
@@ -180,9 +181,9 @@ export const TodayScheduleView: React.FC<TodayScheduleViewProps> = ({
                           <span className="text-xs font-medium text-slate-700 dark:text-zinc-300">
                             {reminder.dosage}
                           </span>
-                          {med?.conditionCategory && (
+                          {med?.drugClass && (
                             <span className="text-[11px] text-slate-500 dark:text-zinc-400">
-                              ({med.conditionCategory})
+                              ({getDrugClassName(med.drugClass)})
                             </span>
                           )}
                         </div>

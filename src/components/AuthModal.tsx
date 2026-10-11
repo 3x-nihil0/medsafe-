@@ -14,6 +14,8 @@ interface AuthModalProps {
   onSelectProfile: (patientID: number) => void;
   onCreateProfile: (data: NewProfileInput) => void;
   onLoadSampleData: () => void;
+  /** Offered on first run so a doctor can skip patient setup. */
+  onSwitchToDoctor?: () => void;
 }
 
 const CONDITION_OPTIONS = [
@@ -46,7 +48,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   activePatientID,
   onSelectProfile,
   onCreateProfile,
-  onLoadSampleData
+  onLoadSampleData,
+  onSwitchToDoctor
 }) => {
   const [mode, setMode] = useState<'profiles' | 'create'>(patients.length === 0 ? 'create' : 'profiles');
   const [fullName, setFullName] = useState('');
@@ -213,6 +216,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Explore with example profiles instead</span>
+                </button>
+              )}
+
+              {patients.length === 0 && onSwitchToDoctor && (
+                <button
+                  onClick={onSwitchToDoctor}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Here for a doctor account instead? Switch to doctor sign-up</span>
                 </button>
               )}
             </div>
@@ -392,6 +405,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <p className="text-[10px] text-slate-400 dark:text-zinc-500 leading-relaxed pt-1">
                 Everything you enter stays on this device. MedSafe does not upload your health data anywhere.
               </p>
+
+              {patients.length === 0 && onSwitchToDoctor && (
+                <button
+                  type="button"
+                  onClick={onSwitchToDoctor}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[11px] text-slate-500 dark:text-zinc-400 hover:text-teal-700 dark:hover:text-teal-300 transition"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Here for a doctor account instead? Switch to doctor sign-up</span>
+                </button>
+              )}
             </form>
           )}
         </div>
