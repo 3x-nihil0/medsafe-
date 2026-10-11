@@ -232,7 +232,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
             </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-zinc-400">
               <Layers className="w-3.5 h-3.5 shrink-0" />
-              <span>Faculty of Computing &amp; Informatics</span>
+              <span>School of Computing</span>
             </div>
           </div>
         </div>
