@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Database, Search, Tag, Clock, Activity, ChevronDown, ChevronUp, Info, Utensils } from 'lucide-react';
 import { DrugRegistryItem } from '../types';
 import { DRUG_CLASSES, getDrugClassName } from '../data/drugClasses';
+import { DRUG_CLASS_INTERACTION_RULES } from '../data/drugClassInteractionRules';
 
 interface DrugRegistryViewProps {
   drugRegistry: DrugRegistryItem[];
@@ -11,6 +12,8 @@ export const DrugRegistryView: React.FC<DrugRegistryViewProps> = ({ drugRegistry
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
+
+  const BASE_TOTAL = DRUG_CLASS_INTERACTION_RULES.length + 40; // 40 original curated pairs + 40 class-expansion rules
 
   const toggleExpand = (atcCode: string) => {
     setExpandedCodes(prev => {
@@ -53,6 +56,9 @@ export const DrugRegistryView: React.FC<DrugRegistryViewProps> = ({ drugRegistry
         <div className="text-left md:text-right">
           <span className="text-[11px] text-slate-500 dark:text-zinc-400 block">Screened Medications</span>
           <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100 font-mono">{drugRegistry.length} Active Records</span>
+          <span className="text-[11px] text-slate-500 dark:text-zinc-400 block mt-1">
+            Rule base: {BASE_TOTAL} pairs · last reviewed 2026-10-11 · BNF/FDA/WHO sources
+          </span>
         </div>
       </div>
 

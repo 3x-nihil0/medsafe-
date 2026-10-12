@@ -416,13 +416,56 @@ export default function App() {
   };
 
   const handleTakeDose = (medicationID: number) => {
+    const med = medications.find(m => m.medicationID === medicationID);
+
+    // Decrement stock
     setMedications(prev =>
-      prev.map(med =>
-        med.medicationID === medicationID
-          ? { ...med, quantityRemaining: Math.max(0, med.quantityRemaining - (med.quantityPerDose || 1)) }
-          : med
+      prev.map(m =>
+        m.medicationID === medicationID
+          ? { ...m, quantityRemaining: Math.max(0, m.quantityRemaining - (m.quantityPerDose || 1)) }
+          : m
       )
     );
+
+    // Record the dose as an Acknowledged reminder so the Today schedule and
+    // the cabinet's 7-day adherence trend reflect doses logged from the cabinet.
+    if (med) {
+      const todayStr = toLocalDateStr(new Date());
+      const times = (med.schedule || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+      const nextTime =
+        times.find(t => !reminders.some(r => r.medicationID === medicationID && r.dueDate === todayStr && r.scheduledTime === t && r.status === 'Acknowledged')) ||
+        times[0] ||
+        '08:00';
+
+      setReminders(prev => {
+        const existing = prev.find(
+          r => r.medicationID === medicationID && r.dueDate === todayStr && r.scheduledTime === nextTime && r.status !== 'Acknowledged'
+        );
+        if (existing) {
+          return prev.map(r =>
+            r.reminderID === existing.reminderID
+              ? { ...r, status: 'Acknowledged' as const, acknowledgedAt: new Date().toISOString() }
+              : r
+          );
+        }
+        const newReminder: Reminder = {
+          reminderID: Math.max(0, ...prev.map(r => r.reminderID)) + 1,
+          medicationID,
+          patientID: med.patientID,
+          drugName: med.drugName,
+          dosage: med.dosage,
+          scheduledTime: nextTime,
+          status: 'Acknowledged',
+          acknowledgedAt: new Date().toISOString(),
+          dueDate: todayStr,
+          note: 'Dose logged from cabinet',
+        };
+        return [...prev, newReminder];
+      });
+    }
   };
 
   const handleRestockSupply = (medicationID: number, quantityToAdd: number) => {
@@ -438,6 +481,29 @@ export default function App() {
     setMedications(prev => prev.filter(m => m.medicationID !== medicationID));
     setReminders(prev => prev.filter(r => r.medicationID !== medicationID));
     setRefillNotifications(prev => prev.filter(rn => rn.medicationID !== medicationID));
+  };
+
+  /** Review-queue: user checked an unverified entry with their prescriber. */
+  const handleConfirmUnverified = (medicationID: number) => {
+    setMedications(prev => prev.map(m => (m.medicationID === medicationID ? { ...m, unverifiedConfirmed: true } : m)));
+  };
+
+  /** Review-queue: swap an unverified drug for its verified registry equivalent. */
+  const handleReplaceUnverified = (medicationID: number, registryItem: DrugRegistryItem) => {
+    setMedications(prev =>
+      prev.map(m =>
+        m.medicationID === medicationID
+          ? {
+              ...m,
+              drugName: registryItem.genericName,
+              normalisedGeneric: registryItem.genericName,
+              atcCode: registryItem.atcCode,
+              drugClass: m.drugClass || registryItem.drugClass,
+              unverifiedConfirmed: undefined
+            }
+          : m
+      )
+    );
   };
 
   /** Add a medication after rule-based safety verification (Algorithm 3.1). */
@@ -737,6 +803,7 @@ export default function App() {
                       patient={activePatient}
                       medications={medications}
                       drugRegistry={drugRegistry}
+                      reminders={reminders}
                       onTakeDose={handleTakeDose}
                       onRestockSupply={handleRestockSupply}
                       onRemoveMedication={handleRemoveMedication}
@@ -761,8 +828,13 @@ export default function App() {
                       allergies={allergies}
                       alertLogs={alertLogs}
                       drugRegistry={drugRegistry}
+                      medications={medications}
+                      interactionRules={interactionRules}
                       onAddAllergy={handleAddAllergy}
                       onRemoveAllergy={handleRemoveAllergy}
+                      onConfirmUnverified={handleConfirmUnverified}
+                      onReplaceUnverified={handleReplaceUnverified}
+                      onRemoveUnverified={handleRemoveMedication}
                       careUnread={careUnread}
                       careTeam={
                         <CareTeamView

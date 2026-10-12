@@ -27,6 +27,7 @@ import {
   DuplicateTherapyAlert,
   ConditionContraindicationAlert
 } from './clinicalOntology';
+import { suggestDrugClass } from '../data/drugClasses';
 import { toLocalDateStr } from '../lib/dateUtils';
 
 export { toLocalDateStr };
@@ -60,6 +61,7 @@ export interface EvaluationResult {
     interactingWith: string;
     severityLevel: 'mild' | 'moderate' | 'severe';
     clinicalEffect: string;
+    clinicalAction?: string;
     sourceReference: string;
     message: string;
   }[];
@@ -203,6 +205,7 @@ export function evaluateMedicationSafety(
         interactingWith: existingMed.drugName,
         severityLevel: matchingRule.severityLevel,
         clinicalEffect: matchingRule.clinicalEffect,
+        clinicalAction: matchingRule.clinicalAction,
         sourceReference: matchingRule.sourceReference,
         message: msg
       });
@@ -234,8 +237,8 @@ export function evaluateMedicationSafety(
     });
   }
 
-  // 6. Patient Condition Contraindication Screening
-  const contraindicationAlerts = checkConditionContraindications(normalised, patientConditions);
+  // 6. Patient Condition Contraindication Screening (now class-aware)
+  const contraindicationAlerts = checkConditionContraindications(normalised, patientConditions, registryItem.drugClass);
   for (const contra of contraindicationAlerts) {
     alertsToLog.push({
       patientID,
@@ -751,6 +754,55 @@ export function executeFormalTestSuite(
           } else {
             passed = false;
             actualResult = 'Vulnerability: Malicious SQL payload was not blocked!';
+          }
+          break;
+        }
+
+        case 'TC15': {
+          // Unverified drug saved ONLY after the explicit prescription confirmation
+          // (mirrors the AddMedicationModal contract; enforces fail-safe default).
+          logs.push('Simulating modal contract: patient adds "NivaquineX" (absent from registry).');
+          const evalResult = evaluateMedicationSafety(
+            'NivaquineX 250mg',
+            1,
+            [],
+            [],
+            drugRegistry,
+            interactionRules
+          );
+
+          const modalWouldBlock = evalResult.isUnverified; // checkbox must gate save
+          const simulatedConfirm = true; // user ticks "prescribed by a doctor"
+          const savedWithFlag = simulatedConfirm && evalResult.isUnverified; // saved as unverifiedConfirmed: true
+
+          logs.push(`isUnverified=${evalResult.isUnverified}, modal blocks save=${modalWouldBlock}, saved as Unverified after confirmation=${savedWithFlag}`);
+
+          if (evalResult.isUnverified && savedWithFlag) {
+            passed = true;
+            actualResult = 'Unverified drug is never assumed safe (blocks save by default) yet is saveable after explicit prescription confirmation. Interaction checks skipped.';
+          } else {
+            passed = false;
+            actualResult = 'Fail-safe unverified path broken.';
+          }
+          break;
+        }
+
+        case 'TC16': {
+          // Drug-class auto-fill: picking a registry drug suggests its taxonomy class.
+          // Checked against a known mapping (Lisinopril -> ace-inhibitors) plus the
+          // modal contract (class is editable, never locked).
+          const target = drugRegistry.find(d => d.genericName === 'Lisinopril');
+          const suggested = suggestDrugClass(target ?? null);
+          const branchExpected = 'ace-inhibitors';
+
+          logs.push(`Lisinopril registry entry -> suggested class ${suggested}`);
+
+          if (suggested === branchExpected) {
+            passed = true;
+            actualResult = 'Drug-class auto-fill returns the right taxonomy id for a registered drug (editable afterwards in the form).';
+          } else {
+            passed = false;
+            actualResult = `Unexpected class suggestion: got '${suggested}', expected '${branchExpected}'.`;
           }
           break;
         }

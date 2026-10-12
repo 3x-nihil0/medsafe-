@@ -20,13 +20,15 @@ import {
   Check,
   FileText
 } from 'lucide-react';
-import { Medication, Patient, DrugRegistryItem } from '../types';
+import { Medication, Patient, DrugRegistryItem, Reminder } from '../types';
 import { getDrugClassName } from '../data/drugClasses';
+import { toLocalDateStr } from '../lib/dateUtils';
 
 interface MedicationCabinetViewProps {
   patient: Patient;
   medications: Medication[];
   drugRegistry?: DrugRegistryItem[];
+  reminders?: Reminder[];
   onTakeDose: (medicationID: number) => void;
   onRestockSupply: (medicationID: number, quantityToAdd: number) => void;
   onRemoveMedication: (medicationID: number) => void;
@@ -37,6 +39,7 @@ export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
   patient,
   medications,
   drugRegistry = [],
+  reminders = [],
   onTakeDose,
   onRestockSupply,
   onRemoveMedication,
@@ -267,6 +270,36 @@ export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
                     {med.instructions}
                   </div>
                 )}
+
+                {/* 7-day adherence trend */}
+                {(() => {
+                  const today = new Date();
+                  let due = 0, taken = 0;
+                  for (let i = 0; i < 7; i++) {
+                    const day = new Date(today);
+                    day.setDate(day.getDate() - i);
+                    const dayStr = toLocalDateStr(day);
+                    const daySlots = med.schedule.split(',').map(t => t.trim()).filter(Boolean).length;
+                    due += daySlots;
+                    med.medicationID && (taken += reminders.filter(
+                      r => r.medicationID === med.medicationID && r.dueDate === dayStr && r.status === 'Acknowledged'
+                    ).length);
+                  }
+                  const pct = due > 0 ? Math.round((Math.min(taken, due) / due) * 100) : null;
+                  if (pct === null) return null;
+                  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+                  return (
+                    <div className="text-[11px] text-slate-600 dark:text-zinc-400 px-0.5">
+                      <div className="flex items-center justify-between mb-1">
+                        <span>7-day adherence</span>
+                        <span className={`font-semibold ${pct >= 80 ? 'text-emerald-700 dark:text-emerald-300' : pct >= 50 ? 'text-amber-700 dark:text-amber-300' : 'text-rose-700 dark:text-rose-300'}`}>{pct}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Schedule & Days remaining metrics */}
                 <div className="grid grid-cols-3 gap-2 text-center text-xs py-2 bg-slate-50 dark:bg-zinc-800 rounded border border-slate-100 dark:border-zinc-700/60">

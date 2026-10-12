@@ -25,8 +25,12 @@ interface AboutViewProps {
   onOpenSummary: () => void;
 }
 
+import { INITIAL_DRUG_REGISTRY, INITIAL_INTERACTION_RULES } from '../data/initialData';
+
 export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSampleData, onOpenSummary }) => {
   const [permission, setPermission] = useState<string>('default');
+  const registryCount = INITIAL_DRUG_REGISTRY.length;
+  const ruleCount = INITIAL_INTERACTION_RULES.length;
 
   useEffect(() => {
     setPermission(getNotificationPermission());
@@ -240,6 +244,9 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
         <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
           Rule base compiled from WHO ATC classification, British National Formulary guidance and FDA drug safety
           communications. All processing happens on your device.
+        </p>
+        <p className="text-[11px] text-slate-600 dark:text-zinc-400 leading-relaxed border-t border-slate-200/60 dark:border-zinc-800 pt-2">
+          Rule base: <strong>{registryCount} registered drugs</strong> · <strong>{ruleCount} interaction pairs</strong> · last reviewed <strong>11 Oct 2026</strong>. Every rule carries a verifiable BNF/FDA/WHO source reference.
         </p>
       </div>
     </div>

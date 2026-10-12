@@ -12,6 +12,7 @@
  */
 
 import { DrugRegistryItem, Allergy, ReactionSeverity, Medication } from '../types';
+import { deriveConditionCategory } from '../data/drugClasses';
 
 export interface AllergenClassDefinition {
   id: string;
@@ -625,7 +626,8 @@ export interface ConditionContraindicationAlert {
 
 export function checkConditionContraindications(
   normalisedDrug: string,
-  conditionTags: string[]
+  conditionTags: string[],
+  drugClassId?: string
 ): ConditionContraindicationAlert[] {
   if (!conditionTags || conditionTags.length === 0) return [];
 
@@ -763,6 +765,85 @@ export function checkConditionContraindications(
         message: `Absolute Contraindication (Boxed Warning): ${normalisedDrug} is contraindicated in pregnancy due to severe teratogenic hazards and fetal organ toxicity.`
       });
     }
+  }
+
+  // 9. CLASS-LEVEL CONTRAINDICATIONS (30-class taxonomy)
+  // Whole-class rules keyed off the drug's therapeutic class, broadening the
+  // single-drug rules above (e.g. any beta-blocker vs asthma, any NSAID vs CKD).
+  const classAlert = (cls: string, condition: string, severityLevel: 'moderate' | 'severe', mechanism: string, message: string) =>
+    alerts.push({ condition, severityLevel, mechanism, message });
+
+  if (drugClassId === 'beta-blockers' && hasCondition(['asthma', 'reactive airway', 'copd', 'bronchospasm'])) {
+    classAlert(
+      'beta-blockers',
+      'Asthma / Reactive Airway Disease',
+      'severe',
+      'Class Beta-Adrenergic Blockade Bronchoconstriction',
+      `Class Contraindication (Severe): ${normalisedDrug} is a beta-blocker. All beta-blockers can trigger severe, potentially fatal bronchospasm in asthma (historically worst with non-selective agents).`
+    );
+  }
+  if (drugClassId === 'nsaids' && hasCondition(['asthma', 'aspirin exacerbated', 'aerd'])) {
+    classAlert(
+      'nsaids',
+      'Aspirin-Exacerbated Respiratory Disease',
+      'severe',
+      'COX-1 inhibition leukotriene shunt',
+      `Class Warning (Severe): ${normalisedDrug} is an NSAID; NSAIDs as a class can precipitate bronchospasm in asthma (aspirin-exacerbated respiratory disease).`
+    );
+  }
+  if (drugClassId === 'nsaids' && hasCondition(['chronic kidney disease', 'ckd', 'renal failure', 'renal impairment', 'nephropathy'])) {
+    classAlert(
+      'nsaids',
+      'Chronic Kidney Disease (CKD)',
+      'severe',
+      'Renal Prostaglandin Inhibition (class effect)',
+      `Class Nephrotoxicity (Severe): ${normalisedDrug} is an NSAID; the class as a whole blocks renal vasodilatory prostaglandins and can cause acute GFR decline in CKD.`
+    );
+  }
+  if ((drugClassId === 'ace-inhibitors' || drugClassId === 'arbs') && hasCondition(['pregnancy', 'pregnant'])) {
+    classAlert(
+      drugClassId,
+      'Pregnancy',
+      'severe',
+      'Class RAAS-blockade fetotoxicity',
+      `Class Contraindication (Severe): ${normalisedDrug} acts on the renin-angiotensin system; ACE inhibitors and ARBs as a class are absolutely contraindicated in pregnancy.`
+    );
+  }
+  if ((drugClassId === 'statins') && hasCondition(['pregnancy', 'pregnant'])) {
+    classAlert(
+      'statins',
+      'Pregnancy',
+      'severe',
+      'Class cholsterol-synthesis blockade in fetal development',
+      `Class Contraindication (Severe): ${normalisedDrug} is a statin; statins as a class are avoided in pregnancy due to fetal cholesterol-traffic disruption.`
+    );
+  }
+  if (drugClassId === 'anticoagulants' && hasCondition(['peptic ulcer', 'gastric ulcer', 'pud', 'gi bleed'])) {
+    classAlert(
+      'anticoagulants',
+      'Peptic Ulcer Disease / GI Bleed',
+      'severe',
+      'Class anticoagulation haemorrhage aggravation',
+      `Class Warning (Severe): ${normalisedDrug} impairs clotting as a class effect and markedly worsens bleeding risk from an existing peptic ulcer.`
+    );
+  }
+  if ((drugClassId === 'antiplatelets') && hasCondition(['peptic ulcer', 'gastric ulcer', 'pud', 'gi bleed'])) {
+    classAlert(
+      'antiplatelets',
+      'Peptic Ulcer Disease / GI Bleed',
+      'moderate',
+      'Antiplatelet impairment of haemostasis over ulcers',
+      `Class Warning: ${normalisedDrug} impairs platelet plug formation over erosion sites, delaying healing of peptic ulcers.`
+    );
+  }
+  if ((drugClassId === 'anticoagulants' || drugClassId === 'antiplatelets') && hasCondition(['pregnancy', 'pregnant'])) {
+    classAlert(
+      drugClassId,
+      'Pregnancy',
+      'severe',
+      'Crosses placenta, fetal and maternal bleeding/teratogenic risk',
+      `Class Contraindication (Severe): ${normalisedDrug} crosses the placenta; antithrombotics require specialist haematology input before any pregnancy exposure.`
+    );
   }
 
   return alerts;

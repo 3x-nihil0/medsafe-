@@ -63,6 +63,8 @@ export interface Medication {
   atcCode?: string;
   /** Therapeutic class id from DRUG_CLASSES taxonomy (typed free-text allowed for unregistered drugs). */
   drugClass?: string;
+  /** True when the user confirmed a doctor's prescription for an unregistered (Unverified) drug. */
+  unverifiedConfirmed?: boolean;
   dosage: string;
   schedule: string; // Comma separated times e.g. "08:00, 20:00"
   quantityRemaining: number;
@@ -93,6 +95,8 @@ export interface InteractionRule {
   drugB: string; // generic ATC name
   severityLevel: InteractionSeverity;
   clinicalEffect: string;
+  /** Concrete risk-mitigation guidance shown alongside the alert (optional until populated). */
+  clinicalAction?: string;
   sourceReference: string; // e.g. "British National Formulary 85 (Appendix 1)", "FDA Drug Safety Communication"
   versionDate: string;
   lastModifiedBy: string;

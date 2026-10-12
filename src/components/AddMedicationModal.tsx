@@ -184,6 +184,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       dosesPerDay: Number(dosesPerDay) || 1,
       refillThresholdDays: Number(refillThresholdDays) || 7,
       status: 'active',
+      unverifiedConfirmed: evaluation.isUnverified ? unverifiedConfirmed : undefined,
       prescribedDate: toLocalDateStr(),
       conditionCategory,
       instructions: instructions.trim() ? sanitizeInput(instructions).sanitized : undefined,
@@ -365,6 +366,12 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                           </span>
                         </div>
                         <p className="text-xs leading-relaxed font-medium">{inter.clinicalEffect}</p>
+                        {inter.clinicalAction && (
+                          <p className="text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-300 font-medium flex items-start gap-1 pt-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                            <span>What to do: {inter.clinicalAction}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}

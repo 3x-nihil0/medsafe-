@@ -20,6 +20,7 @@ import type {
   TestCase
 } from '../types.ts';
 import { DRUG_CLASS_REGISTRY_EXTENSION } from './drugClassRegistry';
+import { DRUG_CLASS_INTERACTION_RULES } from './drugClassInteractionRules';
 
 /**
  * 25 Reference Medications screened for inclusion per Section 3.5.1
@@ -602,7 +603,7 @@ export const INITIAL_DRUG_REGISTRY: DrugRegistryItem[] = [
  * 20 Well-Documented Drug-Drug Interaction Rules
  * Sourced from BNF 85 Appendix 1, FDA Drug Safety Label Warnings, and WHO ATC guidelines (Section 3.5.1)
  */
-export const INITIAL_INTERACTION_RULES: InteractionRule[] = [
+export const BASE_INITIAL_INTERACTION_RULES: InteractionRule[] = [
   {
     ruleID: 101,
     drugA: 'Warfarin',
@@ -1266,6 +1267,13 @@ export const INITIAL_INTERACTION_RULES: InteractionRule[] = [
 ];
 
 /**
+ * Complete interaction rule base = the original 40 curated pairs (101-160)
+ * plus the 30-class expansion (201-240) in src/data/drugClassInteractionRules.ts
+ * (BNF/FDA/WHO-sourced, each with a clinicalAction guidance field).
+ */
+export const INITIAL_INTERACTION_RULES: InteractionRule[] = [...BASE_INITIAL_INTERACTION_RULES, ...DRUG_CLASS_INTERACTION_RULES];
+
+/**
  * 10 Documented Common Allergen Categories
  */
 export const COMMON_ALLERGEN_CATEGORIES = [
@@ -1766,6 +1774,20 @@ export const FORMAL_TEST_CASES: TestCase[] = [
     name: 'SQL Injection / Malformed Input Attempt (FR13)',
     inputDescription: "Input string in drug name field: \"Lisinopril'; DROP TABLE Medication; --\"",
     expectedResult: 'Input rejected/sanitised; no database error, query executed safely with parameterized mapping.',
+    category: 'Validation'
+  },
+  {
+    id: 'TC15',
+    name: 'Unverified Medication Saved Only After Explicit Prescription Confirmation',
+    inputDescription: "Patient adds an unregistered drug ('NivaquineX 250mg')",
+    expectedResult: 'Engine marks unverified (fail-safe blocks save); once user confirms a prescription, saves as Unverified with checks skipped.',
+    category: 'FailSafe'
+  },
+  {
+    id: 'TC16',
+    name: 'Drug-Class Auto-Fill Suggests the Correct Taxonomy Class',
+    inputDescription: "Registry drug 'Lisinopril' selected in the Add Medication form",
+    expectedResult: "The Drug Class field auto-fills to 'ACE Inhibitors' and stays user-editable.",
     category: 'Validation'
   }
 ];

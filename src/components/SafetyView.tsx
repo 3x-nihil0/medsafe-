@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { ShieldAlert, Bell, BookOpen, Users } from 'lucide-react';
-import { Patient, Allergy, AlertLog, DrugRegistryItem } from '../types';
+import { Patient, Allergy, AlertLog, DrugRegistryItem, Medication, InteractionRule } from '../types';
 import { PatientAllergiesView } from './PatientAllergiesView';
 import { PatientAlertHistoryView } from './PatientAlertHistoryView';
 import { DrugRegistryView } from './DrugRegistryView';
+import { UnverifiedQueue } from './UnverifiedQueue';
 
 interface SafetyViewProps {
   patient: Patient;
   allergies: Allergy[];
   alertLogs: AlertLog[];
   drugRegistry: DrugRegistryItem[];
+  medications?: Medication[];
+  interactionRules?: InteractionRule[];
   onAddAllergy: (newAllergy: Omit<Allergy, 'allergyID'>) => void;
   onRemoveAllergy: (allergyID: number) => void;
+  onConfirmUnverified?: (medicationID: number) => void;
+  onReplaceUnverified?: (medicationID: number, registryItem: DrugRegistryItem) => void;
+  onRemoveUnverified?: (medicationID: number) => void;
   /** Care-team tab content (doctor directory, chat, notes) - rendered lazily by the parent. */
   careTeam?: React.ReactNode;
   /** Unread care-team messages, shown as a badge on the Care sub-tab. */
@@ -23,8 +29,13 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
   allergies,
   alertLogs,
   drugRegistry,
+  medications,
+  interactionRules,
   onAddAllergy,
   onRemoveAllergy,
+  onConfirmUnverified,
+  onReplaceUnverified,
+  onRemoveUnverified,
   careTeam,
   careUnread = 0
 }) => {
@@ -103,12 +114,25 @@ export const SafetyView: React.FC<SafetyViewProps> = ({
 
       {/* Subtab content */}
       {activeSubTab === 'allergies' ? (
-        <PatientAllergiesView
-          patient={patient}
-          allergies={allergies}
-          onAddAllergy={onAddAllergy}
-          onRemoveAllergy={onRemoveAllergy}
-        />
+        <div className="space-y-3">
+          {medications && interactionRules && onConfirmUnverified && onRemoveUnverified && (
+            <UnverifiedQueue
+              patient={patient}
+              medications={medications}
+              drugRegistry={drugRegistry}
+              interactionRules={interactionRules}
+              onConfirm={onConfirmUnverified}
+              onReplace={(id, item) => onReplaceUnverified?.(id, item)}
+              onRemove={onRemoveUnverified}
+            />
+          )}
+          <PatientAllergiesView
+            patient={patient}
+            allergies={allergies}
+            onAddAllergy={onAddAllergy}
+            onRemoveAllergy={onRemoveAllergy}
+          />
+        </div>
       ) : activeSubTab === 'history' ? (
         <PatientAlertHistoryView
           patient={patient}
