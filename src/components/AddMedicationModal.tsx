@@ -268,9 +268,10 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       dosage: dosageSanitized.sanitized,
       schedule: schedule.trim() || '08:00',
       quantityRemaining: Number(quantityRemaining) || 30,
-      quantityPerDose: Number(quantityPerDose) || 1,
-      dosesPerDay: Number(dosesPerDay) || 1,
-      refillThresholdDays: Number(refillThresholdDays) || 7,
+      quantityPerDose: Math.max(1, Number(quantityPerDose) || 1),
+      // Derive from the typed dose times so a 3-time schedule is never stored as 1/day.
+      dosesPerDay: Math.max(1, (schedule.trim() || '08:00').split(',').map(t => t.trim()).filter(Boolean).length),
+      refillThresholdDays: Math.max(1, Number(refillThresholdDays) || 7),
       status: 'active',
       unverifiedConfirmed: evaluation.isUnverified ? unverifiedConfirmed : undefined,
       prescribedDate: toLocalDateStr(),
@@ -545,10 +546,15 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 type="text"
                 value={schedule}
                 onChange={e => setSchedule(e.target.value)}
-                placeholder="e.g. 08:00, 20:00"
+                placeholder="e.g. 08:00, 14:00, 20:00"
                 className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-zinc-100 focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
                 required
               />
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-zinc-400">
+                Comma-separated → <span className="font-semibold text-teal-700 dark:text-teal-400">
+                  {Math.max(1, schedule.split(',').map(t => t.trim()).filter(Boolean).length)} dose(s) per day
+                </span>
+              </p>
             </div>
 
             <div>
@@ -592,6 +598,38 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 max="500"
                 value={quantityRemaining}
                 onChange={e => setQuantityRemaining(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-zinc-100 focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="add-med-per-dose" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                {isEditMode ? 'Units per Dose' : 'Units Taken per Dose'}
+              </label>
+              <input
+                id="add-med-per-dose"
+                type="number"
+                min="1"
+                max="20"
+                value={quantityPerDose}
+                onChange={e => setQuantityPerDose(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-zinc-100 focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="add-med-refill-threshold" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                Refill Alert at (days left)
+              </label>
+              <input
+                id="add-med-refill-threshold"
+                type="number"
+                min="1"
+                max="60"
+                value={refillThresholdDays}
+                onChange={e => setRefillThresholdDays(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-zinc-100 focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
                 required
               />
