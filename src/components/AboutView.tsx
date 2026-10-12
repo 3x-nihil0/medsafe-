@@ -246,7 +246,7 @@ export const AboutView: React.FC<AboutViewProps> = ({ onOpenBackup, onLoadSample
           communications. All processing happens on your device.
         </p>
         <p className="text-[11px] text-slate-600 dark:text-zinc-400 leading-relaxed border-t border-slate-200/60 dark:border-zinc-800 pt-2">
-          Rule base: <strong>{registryCount} registered drugs</strong> · <strong>{ruleCount} interaction pairs</strong> · last reviewed <strong>11 Oct 2026</strong>. Every rule carries a verifiable BNF/FDA/WHO source reference.
+          Rule base: <strong>{registryCount} registered drugs</strong> · <strong>{ruleCount} interaction pairs</strong>. Every rule carries a verifiable BNF/FDA/WHO source reference.
         </p>
       </div>
     </div>
