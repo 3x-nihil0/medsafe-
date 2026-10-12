@@ -48,6 +48,12 @@ interface AddMedicationModalProps {
     evaluation: EvaluationResult,
     overrideReason?: string
   ) => void;
+  /** When present, the modal edits an existing prescription instead of adding one. */
+  editingMed?: Medication | null;
+  onSaveEdit?: (
+    updatedMed: Medication,
+    originalMed: Medication
+  ) => void;
 }
 
 export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
@@ -58,8 +64,11 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   activeMedications,
   drugRegistry,
   interactionRules,
-  onAddMedication
+  onAddMedication,
+  editingMed,
+  onSaveEdit
 }) => {
+  const isEditMode = !!editingMed;
   const [drugInput, setDrugInput] = useState('');
   const [dosage, setDosage] = useState('10mg');
   const [schedule, setSchedule] = useState('08:00');
@@ -76,9 +85,43 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [showOverrideField, setShowOverrideField] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Real-time evaluation calculation
+  // Seed fields when entering edit mode (med = existing prescription to correct);
+  // reset to defaults when opening in add mode so stale edit values never leak in.
+  useEffect(() => {
+    if (isOpen && editingMed) {
+      setDrugInput(editingMed.drugName);
+      setDosage(editingMed.dosage);
+      setSchedule(editingMed.schedule);
+      setQuantityRemaining(editingMed.quantityRemaining);
+      setQuantityPerDose(editingMed.quantityPerDose);
+      setDosesPerDay(editingMed.dosesPerDay);
+      setRefillThresholdDays(editingMed.refillThresholdDays);
+      setDrugClass(editingMed.drugClass || DRUG_CLASSES[0].id);
+      setConditionCategory(editingMed.conditionCategory);
+      setInstructions(editingMed.instructions || '');
+      setPhotoUrl(editingMed.photoUrl);
+    } else if (isOpen && !editingMed) {
+      setDrugInput('');
+      setDosage('10mg');
+      setSchedule('08:00');
+      setQuantityRemaining(30);
+      setQuantityPerDose(1);
+      setDosesPerDay(1);
+      setRefillThresholdDays(7);
+      setDrugClass(DRUG_CLASSES[0].id);
+      setConditionCategory('general');
+      setUnverifiedConfirmed(false);
+      setInstructions('');
+      setPhotoUrl(undefined);
+      setOverrideReason('');
+    }
+  }, [isOpen, editingMed]);
+
+  // Real-time evaluation calculation. Skipped in edit mode: the prescription
+  // already passed safety screening, and comparing it against its own row in
+  // the active regimen would fire a false duplicate-therapy alert.
   const evaluation: EvaluationResult | null = useMemo(() => {
-    if (!drugInput.trim()) return null;
+    if (!drugInput.trim() || isEditMode) return null;
     return evaluateMedicationSafety(
       drugInput.trim(),
       patient.patientID,
@@ -88,7 +131,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       interactionRules,
       patient.conditionTags || []
     );
-  }, [drugInput, patient.patientID, patient.conditionTags, activeMedications, patientAllergies, drugRegistry, interactionRules]);
+  }, [drugInput, isEditMode, patient.patientID, patient.conditionTags, activeMedications, patientAllergies, drugRegistry, interactionRules]);
 
   useEffect(() => {
     if (evaluation && !evaluation.isSafe) {
@@ -119,6 +162,51 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
     e.preventDefault();
     setValidationError(null);
 
+    // ================= EDIT MODE =================
+    // The prescription already passed safety screening; corrections here only
+    // touch dosing/quantity/class metadata. Re-screening against interactions
+    // is skipped, but all edited key fields are still sanitised and validated.
+    if (isEditMode && editingMed && onSaveEdit) {
+      const drugS = sanitizeInput(drugInput);
+      if (!drugS.isValid) {
+        setValidationError(`Medication Name: ${drugS.error}`);
+        return;
+      }
+      const doseS = sanitizeInput(dosage);
+      if (!doseS.isValid) {
+        setValidationError(`Dosage: ${doseS.error}`);
+        return;
+      }
+      if (instructions.trim()) {
+        const insS = sanitizeInput(instructions);
+        if (!insS.isValid) {
+          setValidationError(`Instructions: ${insS.error}`);
+          return;
+        }
+      }
+      const times = schedule.trim() || '08:00';
+      onSaveEdit(
+        {
+          ...editingMed,
+          drugName: drugS.sanitized,
+          dosage: doseS.sanitized,
+          schedule: times,
+          dosesPerDay: Math.max(1, times.split(',').map(t => t.trim()).filter(Boolean).length),
+          quantityRemaining: Math.max(0, Number(quantityRemaining) || 0),
+          quantityPerDose: Math.max(1, Number(quantityPerDose) || 1),
+          refillThresholdDays: Math.max(1, Number(refillThresholdDays) || 7),
+          drugClass,
+          conditionCategory,
+          instructions: instructions.trim() ? sanitizeInput(instructions).sanitized : undefined,
+          photoUrl
+        },
+        editingMed
+      );
+      onClose();
+      return;
+    }
+
+    // ================= ADD MODE =================
     // Validate and sanitize free-text inputs per FR13/NFR7
     const drugSanitized = sanitizeInput(drugInput);
     if (!drugSanitized.isValid) {
@@ -214,10 +302,20 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <Pill className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-              <h2 id="add-medication-title" className="text-base font-bold text-slate-900 dark:text-zinc-100">Add Prescribed Medication</h2>
+              <h2 id="add-medication-title" className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                {isEditMode ? 'Edit Prescription' : 'Add Prescribed Medication'}
+              </h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-              Prescribing for <span className="font-semibold text-slate-700 dark:text-zinc-200">{patient.fullName}</span> • Automated Safety Verification
+              {isEditMode ? (
+                <>
+                  Correcting <span className="font-semibold text-slate-700 dark:text-zinc-200">{editingMed?.drugName}</span> • dose times, dosage and stock are editable
+                </>
+              ) : (
+                <>
+                  Prescribing for <span className="font-semibold text-slate-700 dark:text-zinc-200">{patient.fullName}</span> • Automated Safety Verification
+                </>
+              )}
             </p>
           </div>
           <button
@@ -253,8 +351,9 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               required
             />
 
-            {/* Quick Registry Chips */}
-            <div className="mt-2">
+          {/* Quick Registry Chips (add mode only) */}
+          {!isEditMode && (
+          <div className="mt-2">
               <span className="text-[11px] text-slate-500 dark:text-zinc-400 mr-1.5">Common presets:</span>
               <div className="inline-flex flex-wrap gap-1 mt-1">
                 {drugRegistry.slice(0, 6).map(item => (
@@ -269,8 +368,8 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 ))}
               </div>
             </div>
+          )}
           </div>
-
           {/* REAL-TIME SAFETY SCREENING RESULT BANNER */}
           {evaluation && (
             <div className="space-y-2">
@@ -483,7 +582,9 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
             </div>
 
             <div>
-              <label htmlFor="add-med-quantity" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">Initial Quantity In Stock</label>
+              <label htmlFor="add-med-quantity" className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                {isEditMode ? 'Quantity In Stock (current)' : 'Initial Quantity In Stock'}
+              </label>
               <input
                 id="add-med-quantity"
                 type="number"
@@ -553,17 +654,19 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
           <button
             onClick={handleSubmit}
             className={`px-4 py-2 text-xs font-semibold text-white rounded-xl transition shadow-xs flex items-center gap-1.5 ${
-              evaluation && !evaluation.isSafe && !overrideReason
+              !isEditMode && evaluation && !evaluation.isSafe && !overrideReason
                 ? 'bg-amber-600 hover:bg-amber-500'
                 : 'bg-teal-600 hover:bg-teal-500'
             }`}
           >
             <span>
-              {evaluation && !evaluation.isSafe
-                ? showOverrideField
-                  ? 'Confirm with Override'
-                  : 'Review Conflicts'
-                : 'Save Prescription'}
+              {isEditMode
+                ? 'Save Changes'
+                : evaluation && !evaluation.isSafe
+                  ? showOverrideField
+                    ? 'Confirm with Override'
+                    : 'Review Conflicts'
+                  : 'Save Prescription'}
             </span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>

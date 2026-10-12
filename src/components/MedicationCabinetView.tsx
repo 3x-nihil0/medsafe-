@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Utensils,
+  FilePen,
   Activity,
   Sun,
   Moon,
@@ -33,6 +34,7 @@ interface MedicationCabinetViewProps {
   onRestockSupply: (medicationID: number, quantityToAdd: number) => void;
   onRemoveMedication: (medicationID: number) => void;
   onOpenNewMedication: () => void;
+  onEditMedication: (medication: Medication) => void;
 }
 
 export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
@@ -43,7 +45,8 @@ export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
   onTakeDose,
   onRestockSupply,
   onRemoveMedication,
-  onOpenNewMedication
+  onOpenNewMedication,
+  onEditMedication
 }) => {
   const [restockMedID, setRestockMedID] = useState<number | null>(null);
   const [restockAmount, setRestockAmount] = useState<number>(30);
@@ -539,6 +542,14 @@ export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
                     </button>
 
                     <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => onEditMedication(med)}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition"
+                        title="Edit prescription (dose times, dosage, stock)"
+                      >
+                        <FilePen className="w-3.5 h-3.5" />
+                      </button>
+
                       <button
                         onClick={() => {
                           setRestockMedID(med.medicationID);

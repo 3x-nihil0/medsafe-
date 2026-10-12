@@ -131,6 +131,8 @@ export default function App() {
   // --------------------------------------------------------- navigation
   const [mobileTab, setMobileTab] = useState<MobileTab>('today');
   const [isAddMedModalOpen, setIsAddMedModalOpen] = useState(false);
+  /** Medication currently being corrected via the edit dialog (null = add mode). */
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isAlertsDrawerOpen, setIsAlertsDrawerOpen] = useState(false);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
@@ -477,6 +479,59 @@ export default function App() {
     );
   };
 
+  /** Edit dialog save: correct dosing/stock details of an existing prescription. */
+  const handleUpdateMedication = (updated: Medication, original: Medication) => {
+    // Dose times changed -> rebuild today's reminders so the new slots are
+    // armed and stale slots are dropped, while preserving doses already taken
+    // (Acknowledged) as adherence history.
+    const scheduleChanged = updated.schedule !== original.schedule;
+    const todayStr = toLocalDateStr(new Date());
+    if (scheduleChanged) {
+      setReminders(prev => {
+        const preserved = prev.filter(
+          r => !(r.medicationID === updated.medicationID && r.dueDate === todayStr && r.status !== 'Acknowledged')
+        );
+        const armed = scheduleRemindersForMedication(updated, prev).filter(nr => {
+          if (nr.medicationID !== updated.medicationID) return false;
+          if (nr.scheduledTime === original.drugName) return false; // defensive, never true
+          return !preserved.some(p => p.medicationID === nr.medicationID && p.dueDate === todayStr && p.scheduledTime === nr.scheduledTime);
+        });
+        // Stamp the new reminders with today's date so they land on Today's list.
+        const stamped = armed.map(r => ({ ...r, dueDate: todayStr }));
+        // Already-taken reminders for times still in the new schedule stay;
+        // acked reminders for removed times also stay as history.
+        return [...preserved, ...stamped];
+      });
+    }
+
+    setMedications(prev =>
+      prev.map(m => (m.medicationID === updated.medicationID ? updated : m))
+    );
+    setReminders(prev =>
+      prev.map(r =>
+        r.medicationID === updated.medicationID && r.drugName === original.drugName
+          ? { ...r, drugName: updated.drugName, dosage: updated.dosage }
+          : r
+      )
+    );
+
+    // Changed stock or daily usage affects the refill forecast date.
+    const dailyUsage = updated.quantityPerDose * updated.dosesPerDay;
+    if (dailyUsage > 0) {
+      const daysRemaining = Math.floor(updated.quantityRemaining / dailyUsage);
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + daysRemaining);
+      const dueStr = toLocalDateStr(dueDate);
+      setRefillNotifications(prev =>
+        prev.map(rn =>
+          rn.medicationID === updated.medicationID && rn.status !== 'Refilled'
+            ? { ...rn, dueDate: dueStr, daysRemaining, quantityRemaining: updated.quantityRemaining }
+            : rn
+        )
+      );
+    }
+  };
+
   const handleRemoveMedication = (medicationID: number) => {
     setMedications(prev => prev.filter(m => m.medicationID !== medicationID));
     setReminders(prev => prev.filter(r => r.medicationID !== medicationID));
@@ -807,7 +862,8 @@ export default function App() {
                       onTakeDose={handleTakeDose}
                       onRestockSupply={handleRestockSupply}
                       onRemoveMedication={handleRemoveMedication}
-                      onOpenNewMedication={() => setIsAddMedModalOpen(true)}
+                      onOpenNewMedication={() => { setEditingMedication(null); setIsAddMedModalOpen(true); }}
+                      onEditMedication={med => { setEditingMedication(med); setIsAddMedModalOpen(true); }}
                     />
                   )}
 
@@ -883,13 +939,18 @@ export default function App() {
         {isAddMedModalOpen && activePatient && (
           <AddMedicationModal
             isOpen={isAddMedModalOpen}
-            onClose={() => setIsAddMedModalOpen(false)}
+            onClose={() => {
+              setIsAddMedModalOpen(false);
+              setEditingMedication(null);
+            }}
             patient={activePatient}
             patientAllergies={allergies}
             activeMedications={medications}
             drugRegistry={drugRegistry}
             interactionRules={interactionRules}
             onAddMedication={handleAddMedication}
+            editingMed={editingMedication}
+            onSaveEdit={handleUpdateMedication}
           />
         )}
 
