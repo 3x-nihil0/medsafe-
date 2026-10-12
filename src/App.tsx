@@ -848,7 +848,8 @@ export default function App() {
                       reminders={reminders}
                       medications={medications}
                       onAcknowledgeReminder={handleAcknowledgeReminder}
-                      onOpenNewPrescription={() => setIsAddMedModalOpen(true)}
+                      onOpenNewPrescription={() => { setEditingMedication(null); setIsAddMedModalOpen(true); }}
+                      onEditMedication={med => { setEditingMedication(med); setIsAddMedModalOpen(true); }}
                       simulatedTime={now}
                     />
                   )}

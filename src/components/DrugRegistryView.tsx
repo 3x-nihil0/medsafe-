@@ -57,7 +57,7 @@ export const DrugRegistryView: React.FC<DrugRegistryViewProps> = ({ drugRegistry
           <span className="text-[11px] text-slate-500 dark:text-zinc-400 block">Screened Medications</span>
           <span className="text-sm font-semibold text-slate-900 dark:text-zinc-100 font-mono">{drugRegistry.length} Active Records</span>
           <span className="text-[11px] text-slate-500 dark:text-zinc-400 block mt-1">
-            Rule base: {BASE_TOTAL} pairs · last reviewed 2026-10-11 · BNF/FDA/WHO sources
+            Rule base: {BASE_TOTAL} pairs · BNF/FDA/WHO sources
           </span>
         </div>
       </div>

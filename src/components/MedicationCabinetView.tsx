@@ -274,14 +274,17 @@ export const MedicationCabinetView: React.FC<MedicationCabinetViewProps> = ({
                   </div>
                 )}
 
-                {/* 7-day adherence trend */}
+                {/* 7-day adherence trend (days before the prescription started don't count against you) */}
                 {(() => {
                   const today = new Date();
                   let due = 0, taken = 0;
+                  const startedStr = med.prescribedDate || '';
                   for (let i = 0; i < 7; i++) {
                     const day = new Date(today);
                     day.setDate(day.getDate() - i);
                     const dayStr = toLocalDateStr(day);
+                    // Skip days the prescription didn't exist yet.
+                    if (startedStr && dayStr < startedStr) continue;
                     const daySlots = med.schedule.split(',').map(t => t.trim()).filter(Boolean).length;
                     due += daySlots;
                     med.medicationID && (taken += reminders.filter(

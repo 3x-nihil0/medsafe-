@@ -6,7 +6,8 @@ import {
   Pill,
   Calendar,
   Check,
-  Plus
+  Plus,
+  FilePen
 } from 'lucide-react';
 import { Reminder, Medication, Patient } from '../types';
 import { getDrugClassName } from '../data/drugClasses';
@@ -17,6 +18,8 @@ interface TodayScheduleViewProps {
   medications: Medication[];
   onAcknowledgeReminder: (reminderID: number) => void;
   onOpenNewPrescription: () => void;
+  /** Opens the edit dialog for the prescription behind a dose card. */
+  onEditMedication?: (medication: Medication) => void;
   simulatedTime: Date;
 }
 
@@ -26,6 +29,7 @@ export const TodayScheduleView: React.FC<TodayScheduleViewProps> = ({
   medications,
   onAcknowledgeReminder,
   onOpenNewPrescription,
+  onEditMedication,
   simulatedTime
 }) => {
   const patientReminders = reminders.filter(r => r.patientID === patient.patientID);
@@ -208,7 +212,7 @@ export const TodayScheduleView: React.FC<TodayScheduleViewProps> = ({
                     </div>
 
                     {/* Action / Status Column */}
-                    <div className="shrink-0 flex items-center justify-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-zinc-800">
+                    <div className="shrink-0 flex items-center justify-end gap-1.5 sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-zinc-800">
                       {isAcknowledged ? (
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-medium">
                           <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -222,6 +226,16 @@ export const TodayScheduleView: React.FC<TodayScheduleViewProps> = ({
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Record Dose Taken</span>
+                        </button>
+                      )}
+
+                      {med && onEditMedication && (
+                        <button
+                          onClick={() => onEditMedication(med)}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded transition shrink-0"
+                          title="Edit prescription (dose times, dosage, stock)"
+                        >
+                          <FilePen className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>

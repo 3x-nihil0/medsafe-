@@ -84,6 +84,8 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [overrideReason, setOverrideReason] = useState('');
   const [showOverrideField, setShowOverrideField] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  /** True once the user picks a class manually; auto-fill then backs off. */
+  const [classTouched, setClassTouched] = useState(false);
 
   // Seed fields when entering edit mode (med = existing prescription to correct);
   // reset to defaults when opening in add mode so stale edit values never leak in.
@@ -98,6 +100,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       setRefillThresholdDays(editingMed.refillThresholdDays);
       setDrugClass(editingMed.drugClass || DRUG_CLASSES[0].id);
       setConditionCategory(editingMed.conditionCategory);
+      setClassTouched(true);
       setInstructions(editingMed.instructions || '');
       setPhotoUrl(editingMed.photoUrl);
     } else if (isOpen && !editingMed) {
@@ -110,6 +113,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       setRefillThresholdDays(7);
       setDrugClass(DRUG_CLASSES[0].id);
       setConditionCategory('general');
+      setClassTouched(false);
       setUnverifiedConfirmed(false);
       setInstructions('');
       setPhotoUrl(undefined);
@@ -154,9 +158,22 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
 
   /** Class changed manually -> keep condition in sync unless it was explicitly set. */
   const handleClassChange = (classId: string) => {
+    setClassTouched(true);
     setDrugClass(classId);
     setConditionCategory(deriveConditionCategory(classId));
   };
+
+  // Auto-fill the therapeutic class when the typed name resolves to a registry
+  // entry — same behaviour as the preset chips. Skipped in edit mode and once
+  // the user has chosen a class by hand.
+  useEffect(() => {
+    if (isEditMode || classTouched) return;
+    const item = evaluation?.registryItem;
+    if (item) {
+      setDrugClass(item.drugClass || suggestDrugClass(item));
+      setConditionCategory(item.category);
+    }
+  }, [isEditMode, classTouched, evaluation]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
